@@ -5,6 +5,7 @@ import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +38,16 @@ public class DepositMoney {
     @MethodSource("depositNotCorrectDate")
     @ParameterizedTest
     public void userCanDepositNotCorrectDate(int id, double balance) {
+
+        double balanceBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/{accountId}/transactions")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("balance");
+
         String requestBody = String.format(
                 Locale.US,
                 """
@@ -54,10 +65,29 @@ public class DepositMoney {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/{accountId}/transactions")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("balance", Matchers.equalTo(balanceBefore));
     }
 
     @Test
     public void userCanDepositNotAccountDate() {
+
+        double balanceBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/{accountId}/transactions")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("balance");
+
         String requestBody =
                 """
                         {
@@ -74,6 +104,15 @@ public class DepositMoney {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_FORBIDDEN);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/{accountId}/transactions")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("balance", Matchers.equalTo(balanceBefore));
     }
 
     @Test

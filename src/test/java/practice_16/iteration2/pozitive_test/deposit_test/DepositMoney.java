@@ -54,5 +54,15 @@ public class DepositMoney {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/{accountId}/transactions")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("amount", Matchers.hasItem(balance))
+                .body("type", Matchers.hasItem("DEPOSIT"));
     }
 }

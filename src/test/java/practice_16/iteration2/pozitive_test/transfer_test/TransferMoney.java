@@ -5,6 +5,7 @@ import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -45,6 +46,27 @@ public class TransferMoney {
                         "amount": %.2f
                         }
                         """, senderAccountId, receiverAccountId, amount);
+
+        double senderBalanceBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/accounts/" + senderAccountId)
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("balance");
+
+        double receiverBalanceBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0MDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/accounts/" + receiverAccountId)
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("balance");
+
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -54,5 +76,23 @@ public class TransferMoney {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/accounts/" + senderAccountId)
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("balance", Matchers.equalTo(senderBalanceBefore - amount));
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/accounts/" + receiverAccountId)
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("balance", Matchers.equalTo(receiverBalanceBefore + amount));
     }
 }

@@ -5,6 +5,7 @@ import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,6 +46,16 @@ public class Profile {
     @MethodSource("profileWithNotCorrectDate")
     @ParameterizedTest
     public void updateNameWithNotCorrectDate(String name) {
+
+        String nameBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("name");
+
         String requestBody = String.format(
                 """
                         {
@@ -60,10 +71,29 @@ public class Profile {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", Matchers.equalTo(nameBefore));
     }
 
     @Test
     public void updateNameWithNotCorrectTypNull() {
+
+        String nameBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("name");
+
         String requestBody =
                 """
                         {
@@ -79,10 +109,29 @@ public class Profile {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", Matchers.equalTo(nameBefore));
     }
 
     @Test
     public void updateNameWithNotCorrectTypInt() {
+
+        String nameBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("name");
+
         String requestBody =
                 """
                         {
@@ -98,10 +147,29 @@ public class Profile {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", Matchers.equalTo(nameBefore));
     }
 
     @Test
     public void updateNameWithEmptyName() {
+
+        String nameBefore = given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path("name");
+
         String requestBody =
                 """
                         {
@@ -117,5 +185,14 @@ public class Profile {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        given()
+                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", Matchers.equalTo(nameBefore));
     }
 }
