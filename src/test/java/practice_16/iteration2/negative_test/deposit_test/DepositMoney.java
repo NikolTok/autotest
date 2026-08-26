@@ -1,175 +1,190 @@
 package practice_16.iteration2.negative_test.deposit_test;
 
+import generators.RandomData;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
+import models.CreateUserRequest;
+import models.DepositMoneyRequest;
+import models.DepositMoneyResponse;
+import models.UserRole;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import practice_16.iteration2.BaseTest;
+import requests.AdminCreateUserRequester;
+import requests.CreateAccountRequester;
+import requests.DepositMoneyRequester;
+import spec.RequestSpecs;
+import spec.ResponseSpecs;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 
-public class DepositMoney {
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter())
-        );
-    }
+public class DepositMoney extends BaseTest {
 
     public static Stream<Arguments> depositNotCorrectDate() {
         return Stream.of(
-                Arguments.of(1, 0.00),
-                Arguments.of(1, -0.01),
-                Arguments.of(1, 5000.01)
+                Arguments.of(new BigDecimal("0.00"),"Deposit amount must be at least 0.01"),
+                Arguments.of(new BigDecimal("-0.01"), "Deposit amount must be at least 0.01"),
+                Arguments.of(new BigDecimal("5000.01"), "Deposit amount cannot exceed 5000")
         );
     }
 
     @MethodSource("depositNotCorrectDate")
     @ParameterizedTest
-    public void userCanDepositNotCorrectDate(int id, double balance) {
-        String requestBody = String.format(
-                Locale.US,
-                """
-                        {
-                        "id": %d,
-                        "balance": %.2f
-                        }
-                        """,id, balance);
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
+    public void userCannotDepositInvalidAmount(BigDecimal balance, String expectedMessage) {
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        int accountId = new CreateAccountRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.entityWasCreated())
+                .post(null)
+                .extract()
+                .path("id");
+
+        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
+                .id(accountId)
+                .balance(balance)
+                .build();
+
+        new DepositMoneyRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
+                .post(depositRequest);
     }
 
     @Test
-    public void userCanDepositNotAccountDate() {
-        String requestBody =
-                """
-                        {
-                        "id": 999999,
-                        "balance": 100.00
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_FORBIDDEN);
+    public void userCannotDepositToNonExistingAccount() {
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
+                .id(999999)
+                .balance(RandomData.getBalance())
+                .build();
+
+        new DepositMoneyRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
+                .post(depositRequest);
     }
 
     @Test
-    public void userCanDepositNotIdDate() {
-        String requestBody =
-                """
-                        {
-                        "balance": 100.00
-                        }
-                        """;
+    public void userCannotDepositWithInvalidAccountId() {
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        String requestBody = """
+            {
+                "balance": 100.00
+            }
+            """;
+
         given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .spec(RequestSpecs.authAsUser(
+                        userRequest.getUsername(),
+                        userRequest.getPassword()))
                 .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
+                .post("/api/v1/accounts/deposit")
                 .then()
-                .assertThat()
                 .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    public void userCanDepositNotBalanceDate() {
-        String requestBody =
-                """
-                        {
-                        "id": 1,
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-    }
+    public void userCannotDepositWithInvalidBalance() {
 
-    @Test
-    public void userCanDepositNotTypBalance() {
-        String requestBody =
-                """
-                        {
-                        "id": 999999,
-                        "balance": "hello"
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-    }
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
 
-    @Test
-    public void userCanDepositNotTypId() {
-        String requestBody =
-                """
-                        {
-                        "id": "hello",
-                        "balance": 100.00
-                        }
-                        """;
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        String requestBody = """
+            {
+                "id": 1,
+            }
+            """;
+
         given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
+                .spec(RequestSpecs.authAsUser(
+                        userRequest.getUsername(),
+                        userRequest.getPassword()))
                 .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
+                .post("/api/v1/accounts/deposit")
                 .then()
-                .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
     }
 
     @Test
     public void userCanDepositNotAuthorization() {
-        String requestBody =
-                """
-                        {
-                        "id": "hello",
-                        "balance": 100.00
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_UNAUTHORIZED);
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        int accountId = new CreateAccountRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.entityWasCreated())
+                .post(null)
+                .extract()
+                .path("id");
+
+        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
+                .id(accountId)
+                .balance(RandomData.getBalance())
+                .build();
+
+        new DepositMoneyRequester(RequestSpecs.unAuthSpec(), ResponseSpecs.requestReturnUnauthorized())
+                .post(depositRequest);
     }
 }

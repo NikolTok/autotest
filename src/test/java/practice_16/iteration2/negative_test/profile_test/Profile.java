@@ -1,121 +1,61 @@
 package practice_16.iteration2.negative_test.profile_test;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import generators.RandomData;
+import models.BaseModel;
+import models.CreateUserRequest;
+import models.UpdateProfileRequest;
+import models.UserRole;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.AdminCreateUserRequester;
+import requests.UpdateProfileRequester;
+import spec.RequestSpecs;
+import spec.ResponseSpecs;
 
-import java.util.List;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-
-public class Profile {
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter())
-        );
-    }
+public class Profile extends BaseModel {
 
     public static Stream<Arguments> profileWithNotCorrectDate() {
         return Stream.of(
-                Arguments.of("Kolya Tokarev Aleksandrovich"),
-                Arguments.of("Kolya1 Tokarev"),
-                Arguments.of("Kolya 123"),
-                Arguments.of("123 Tokarev"),
-                Arguments.of("123 456"),
-                Arguments.of("Kolya  Tokarev"),
-                Arguments.of("Kolya"),
-                Arguments.of("Kolya Tokarev!"),
-                Arguments.of(" Kolya Tokarev"),
-                Arguments.of("Kolya Tokarev "),
-                Arguments.of(" "),
-                Arguments.of("")
+                Arguments.of("Kolya Tokarev Aleksandrovich", "Name must contain two words with letters only"),
+                Arguments.of("Kolya1 Tokarev", "Name must contain two words with letters only"),
+                Arguments.of("Kolya 123", "Name must contain two words with letters only"),
+                Arguments.of("123 Tokarev", "Name must contain two words with letters only"),
+                Arguments.of("123 456", "Name must contain two words with letters only"),
+                Arguments.of("Kolya  Tokarev", "Name must contain two words with letters only"),
+                Arguments.of("Kolya", "Name must contain two words with letters only"),
+                Arguments.of("Kolya Tokarev!", "Name must contain two words with letters only"),
+                Arguments.of(" Kolya Tokarev", "Name must contain two words with letters only"),
+                Arguments.of("Kolya Tokarev ", "Name must contain two words with letters only"),
+                Arguments.of(" ", "Name must contain two words with letters only"),
+                Arguments.of("", "Name must contain two words with letters only")
         );
     }
 
     @MethodSource("profileWithNotCorrectDate")
     @ParameterizedTest
-    public void updateNameWithNotCorrectDate(String name) {
-        String requestBody = String.format(
-                """
-                        {
-                          "name": "%s"
-                        }
-                        """, name);
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-    }
+    public void updateNameWithNotCorrectDate(String name, String expectedMessage) {
 
-    @Test
-    public void updateNameWithNotCorrectTypNull() {
-        String requestBody =
-                """
-                        {
-                          "name": null
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-    }
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
 
-    @Test
-    public void updateNameWithNotCorrectTypInt() {
-        String requestBody =
-                """
-                        {
-                          "name": 123
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-    }
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
 
-    @Test
-    public void updateNameWithEmptyName() {
-        String requestBody =
-                """
-                        {
-                          "name":
-                        }
-                        """;
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
+        UpdateProfileRequest profileRequest = UpdateProfileRequest.builder()
+                .name(name)
+                .build();
+
+        new UpdateProfileRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
+                .put(profileRequest);
     }
 }

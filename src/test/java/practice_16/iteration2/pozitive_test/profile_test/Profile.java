@@ -1,29 +1,22 @@
 package practice_16.iteration2.pozitive_test.profile_test;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
+import generators.RandomData;
+import models.CreateUserRequest;
+import models.UpdateProfileRequest;
+import models.UpdateProfileResponse;
+import models.UserRole;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import practice_16.iteration2.BaseTest;
+import requests.AdminCreateUserRequester;
+import requests.UpdateProfileRequester;
+import spec.RequestSpecs;
+import spec.ResponseSpecs;
 
-import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-
-public class Profile {
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter())
-        );
-    }
+public class Profile extends BaseTest {
 
     public static Stream<Arguments> profileWithCorrectDate() {
         return Stream.of(
@@ -35,20 +28,31 @@ public class Profile {
     @MethodSource("profileWithCorrectDate")
     @ParameterizedTest
     public void updateNameWithCorrectDate(String name) {
-        String requestBody = String.format(
-                """
-                        {
-                          "name": "%s"
-                        }
-                        """, name);
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        UpdateProfileRequest profileRequest = UpdateProfileRequest.builder()
+                .name(name)
+                .build();
+
+        UpdateProfileResponse response = new UpdateProfileRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK())
+                .put(profileRequest)
+                .extract()
+                .as(UpdateProfileResponse.class);
+
+        softly.assertThat(response.getCustomer().getName()).isEqualTo(name);
+        softly.assertThat(response.getMessage()).isEqualTo("Profile updated successfully");
+        softly.assertThat(response.getCustomer()).isNotNull();
     }
 }

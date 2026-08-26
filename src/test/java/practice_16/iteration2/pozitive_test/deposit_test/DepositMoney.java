@@ -1,58 +1,73 @@
 package practice_16.iteration2.pozitive_test.deposit_test;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeAll;
+import generators.RandomData;
+import models.CreateUserRequest;
+import models.DepositMoneyRequest;
+import models.DepositMoneyResponse;
+import models.UserRole;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import practice_16.iteration2.BaseTest;
+import requests.AdminCreateUserRequester;
+import requests.CreateAccountRequester;
+import requests.DepositMoneyRequester;
+import spec.RequestSpecs;
+import spec.ResponseSpecs;
 
-import java.util.List;
-import java.util.Locale;
+import java.math.BigDecimal;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-
-public class DepositMoney {
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter())
-        );
-    }
+public class DepositMoney extends BaseTest {
 
     public static Stream<Arguments> depositWithCorrectDate() {
         return Stream.of(
-                Arguments.of(1, 0.01),
-                Arguments.of(1, 4999.99),
-                Arguments.of(1, 5000.00)
+                Arguments.of(new BigDecimal("0.01")),
+                Arguments.of(new BigDecimal("4999.99")),
+                Arguments.of(new BigDecimal("5000.00"))
         );
     }
 
     @MethodSource("depositWithCorrectDate")
     @ParameterizedTest
-    public void userCanDepositWithCorrectDate(int id, double balance) {
-        String requestBody = String.format(
-                Locale.US,
-                """
-                        {
-                        "id": %d,
-                        "balance": %.2f
-                        }
-                        """,id, balance);
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic VGVzdDIwMjc6S2F0ZTIwMDAj")
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+    public void userCanDepositWithCorrectDate(BigDecimal balance) {
+
+        CreateUserRequest userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        int accountId = new CreateAccountRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.entityWasCreated())
+                .post(null)
+                .extract()
+                .path("id");
+
+        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
+                .id(accountId)
+                .balance(balance)
+                .build();
+
+        DepositMoneyResponse response = new DepositMoneyRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK())
+                .post(depositRequest)
+                .extract()
+                .as(DepositMoneyResponse.class);
+
+        softly.assertThat(response.getId()).isEqualTo(accountId);
+        softly.assertThat(response.getAccountNumber()).isEqualTo("ACC" + accountId);
+        softly.assertThat(response.getBalance()).isEqualByComparingTo(balance);
+        softly.assertThat(response.getTransactions()).hasSize(1);
+        softly.assertThat(response.getTransactions().get(0).getAmount()).isEqualByComparingTo(balance);
+        softly.assertThat(response.getTransactions().get(0).getType()).isEqualTo("DEPOSIT");
+        softly.assertThat(response.getTransactions().get(0).getRelatedAccountId()).isEqualTo(accountId);
     }
 }
