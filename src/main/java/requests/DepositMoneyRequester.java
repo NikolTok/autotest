@@ -23,7 +23,7 @@ public class DepositMoneyRequester extends Request{
         return given()
                 .spec(requestSpecification)
                 .body(model)
-                .post("/api/v1/accounts/deposit")
+                .post("/accounts/deposit")
                 .then()
                 .assertThat()
                 .spec(responseSpecification);

@@ -17,7 +17,7 @@ public class UpdateProfileRequester extends Request{
         return given()
                 .spec(requestSpecification)
                 .body(model)
-                .post("/api/v1/customer/profile")
+                .post("/customer/profile")
                 .then()
                 .assertThat()
                 .spec(responseSpecification);
@@ -28,7 +28,7 @@ public class UpdateProfileRequester extends Request{
         return given()
                 .spec(requestSpecification)
                 .body(model)
-                .put("/api/v1/customer/profile")
+                .put("/customer/profile")
                 .then()
                 .assertThat()
                 .spec(responseSpecification);

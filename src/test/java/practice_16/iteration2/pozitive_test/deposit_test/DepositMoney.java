@@ -1,17 +1,17 @@
 package practice_16.iteration2.pozitive_test.deposit_test;
 
-import generators.RandomData;
+import models.CreateAccountResponse;
 import models.CreateUserRequest;
 import models.DepositMoneyRequest;
 import models.DepositMoneyResponse;
-import models.UserRole;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
 import requests.DepositMoneyRequester;
+import requests.steps.AccountSteps;
+import requests.steps.AdminSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
@@ -32,42 +32,26 @@ public class DepositMoney extends BaseTest {
     @ParameterizedTest
     public void userCanDepositWithCorrectDate(BigDecimal balance) {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse account = AccountSteps.createAccount(user);
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(Math.toIntExact(account.getId()))
                 .balance(balance)
                 .build();
 
         DepositMoneyResponse response = new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsOK())
                 .post(depositRequest)
                 .extract()
                 .as(DepositMoneyResponse.class);
 
-        softly.assertThat(response.getId()).isEqualTo(accountId);
-        softly.assertThat(response.getAccountNumber()).isEqualTo("ACC" + accountId);
-        softly.assertThat(response.getBalance()).isEqualByComparingTo(balance);
+        ModelAssertions.assertThatModels(depositRequest, response).match();
+        softly.assertThat(response.getAccountNumber()).isEqualTo("ACC" + account.getId());
         softly.assertThat(response.getTransactions()).hasSize(1);
         softly.assertThat(response.getTransactions().get(0).getAmount()).isEqualByComparingTo(balance);
         softly.assertThat(response.getTransactions().get(0).getType()).isEqualTo("DEPOSIT");
-        softly.assertThat(response.getTransactions().get(0).getRelatedAccountId()).isEqualTo(accountId);
+        softly.assertThat(response.getTransactions().get(0).getRelatedAccountId()).isEqualTo(account.getId());
     }
 }

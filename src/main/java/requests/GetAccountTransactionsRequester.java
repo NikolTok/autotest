@@ -24,7 +24,7 @@ public class GetAccountTransactionsRequester extends Request {
         return given()
                 .spec(requestSpecification)
                 .pathParam("accountId", accountId)
-                .get("/api/v1/accounts/{accountId}/transactions")
+                .get("/accounts/{accountId}/transactions")
                 .then()
                 .assertThat()
                 .spec(responseSpecification);

@@ -1,31 +1,22 @@
 package practice_16.iteration2.negative_test.deposit_test;
 
 import generators.RandomData;
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
+import models.CreateAccountResponse;
 import models.CreateUserRequest;
 import models.DepositMoneyRequest;
-import models.DepositMoneyResponse;
-import models.UserRole;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
 import requests.DepositMoneyRequester;
+import requests.steps.AccountSteps;
+import requests.steps.AdminSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -44,31 +35,16 @@ public class DepositMoney extends BaseTest {
     @ParameterizedTest
     public void userCannotDepositInvalidAmount(BigDecimal balance, String expectedMessage) {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse account = AccountSteps.createAccount(user);
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(Math.toIntExact(account.getId()))
                 .balance(balance)
                 .build();
 
         new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
                 .post(depositRequest);
     }
@@ -76,16 +52,7 @@ public class DepositMoney extends BaseTest {
     @Test
     public void userCannotDepositToNonExistingAccount() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        CreateUserRequest user = AdminSteps.createUser();
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
                 .id(999999)
@@ -93,7 +60,7 @@ public class DepositMoney extends BaseTest {
                 .build();
 
         new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
                 .post(depositRequest);
     }
@@ -101,16 +68,7 @@ public class DepositMoney extends BaseTest {
     @Test
     public void userCannotDepositWithInvalidAccountId() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        CreateUserRequest user = AdminSteps.createUser();
 
         String requestBody = """
             {
@@ -120,10 +78,10 @@ public class DepositMoney extends BaseTest {
 
         given()
                 .spec(RequestSpecs.authAsUser(
-                        userRequest.getUsername(),
-                        userRequest.getPassword()))
+                        user.getUsername(),
+                        user.getPassword()))
                 .body(requestBody)
-                .post("/api/v1/accounts/deposit")
+                .post("/accounts/deposit")
                 .then()
                 .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
     }
@@ -131,16 +89,7 @@ public class DepositMoney extends BaseTest {
     @Test
     public void userCannotDepositWithInvalidBalance() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        CreateUserRequest user = AdminSteps.createUser();
 
         String requestBody = """
             {
@@ -150,10 +99,10 @@ public class DepositMoney extends BaseTest {
 
         given()
                 .spec(RequestSpecs.authAsUser(
-                        userRequest.getUsername(),
-                        userRequest.getPassword()))
+                        user.getUsername(),
+                        user.getPassword()))
                 .body(requestBody)
-                .post("/api/v1/accounts/deposit")
+                .post("/accounts/deposit")
                 .then()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
     }
@@ -161,26 +110,11 @@ public class DepositMoney extends BaseTest {
     @Test
     public void userCanDepositNotAuthorization() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse account = AccountSteps.createAccount(user);
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(Math.toIntExact(account.getId()))
                 .balance(RandomData.getBalance())
                 .build();
 

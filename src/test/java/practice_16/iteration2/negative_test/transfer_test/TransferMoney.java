@@ -1,10 +1,7 @@
 package practice_16.iteration2.negative_test.transfer_test;
 
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.DepositMoneyRequest;
-import models.TransferMoneyRequest;
-import models.UserRole;
+import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +12,9 @@ import requests.AdminCreateUserRequester;
 import requests.CreateAccountRequester;
 import requests.DepositMoneyRequester;
 import requests.TransferMoneyRequester;
+import requests.steps.AccountSteps;
+import requests.steps.AdminSteps;
+import requests.steps.DepositSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
@@ -37,54 +37,20 @@ public class TransferMoney extends BaseTest {
     @ParameterizedTest
     public void userCanTransferWithNotCorrectDate(BigDecimal amount, String expectedMessage) {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId1 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
-
-        int accountId2 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
-
-        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
-                .build();
-
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
-
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
+        CreateAccountResponse receiverAccountId = AccountSteps.createAccount(user);
+        DepositSteps.depositMoney(user, senderAccountId.getId(), new BigDecimal("5000.00"));
+        DepositSteps.depositMoney(user, senderAccountId.getId(), new BigDecimal("5000.00"));
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId2)
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
+                .receiverAccountId(Math.toIntExact(receiverAccountId.getId()))
                 .amount(amount)
                 .build();
 
         new TransferMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
                 .post(transferRequest);
     }
@@ -92,32 +58,18 @@ public class TransferMoney extends BaseTest {
     @Test
     public void userCanTransferWithNotCorrectReceiverAccountId() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId1 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
                 .receiverAccountId(99999)
                 .amount(RandomData.getAmount())
                 .build();
 
         new TransferMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText("Invalid transfer: insufficient funds or invalid accounts"))
                 .post(transferRequest);
     }
@@ -125,32 +77,17 @@ public class TransferMoney extends BaseTest {
     @Test
     public void userCanTransferWithNotCorrectSenderAccountId() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId2 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse receiverAccountId = AccountSteps.createAccount(user);
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
                 .senderAccountId(99999)
-                .receiverAccountId(accountId2)
+                .receiverAccountId(Math.toIntExact(receiverAccountId.getId()))
                 .amount(RandomData.getAmount())
                 .build();
 
         new TransferMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
                 .post(transferRequest);
     }
@@ -158,134 +95,71 @@ public class TransferMoney extends BaseTest {
     @Test
     public void userCanTransferWithNotSenderAccountId() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse receiverAccountId = AccountSteps.createAccount(user);
+
+        TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
+                .receiverAccountId(Math.toIntExact(receiverAccountId.getId()))
+                .amount(RandomData.getAmount())
                 .build();
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        String requestBody = """
-                {
-                "receiverAccountId": 1,
-                "amount": 10.00
-                }
-                """;
-
-        given()
-                .spec(RequestSpecs.authAsUser(
-                        userRequest.getUsername(),
-                        userRequest.getPassword()))
-                .body(requestBody)
-                .post("/api/v1/accounts/transfer")
-                .then()
-                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        new TransferMoneyRequester(
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
+                .post(transferRequest);
     }
 
     @Test
     public void userCanTransferWithNotReceiverAccountId() {
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
+
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
+
+        TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
+                .amount(RandomData.getAmount())
                 .build();
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        String requestBody = """
-                {
-                "senderAccountId": 1,
-                "amount": 10.00
-                }
-                """;
-
-        given()
-                .spec(RequestSpecs.authAsUser(
-                        userRequest.getUsername(),
-                        userRequest.getPassword()))
-                .body(requestBody)
-                .post("/api/v1/accounts/transfer")
-                .then()
-                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        new TransferMoneyRequester(
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                ResponseSpecs.requestReturnsBadRequestWithText("Invalid transfer: insufficient funds or invalid accounts"))
+                .post(transferRequest);
     }
 
     @Test
     public void userCanTransferWithNotAmount() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
+        CreateAccountResponse receiverAccountId = AccountSteps.createAccount(user);
+        DepositSteps.depositMoney(user, senderAccountId.getId(), new BigDecimal("5000.00"));
+
+        TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
+                .receiverAccountId(Math.toIntExact(receiverAccountId.getId()))
                 .build();
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        String requestBody = """
-                {
-                "senderAccountId": 1,
-                "receiverAccountId": 2,
-                }
-                """;
-
-        given()
-                .spec(RequestSpecs.authAsUser(
-                        userRequest.getUsername(),
-                        userRequest.getPassword()))
-                .body(requestBody)
-                .post("/api/v1/accounts/transfer")
-                .then()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
+        new TransferMoneyRequester(
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                ResponseSpecs.requestReturnsInternalServerErrorWithText())
+                .post(transferRequest);
     }
 
     @Test
     public void userCanTransferSenderAccountIdOnReceiverAccountId() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId1 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
-
-        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
-                .build();
-
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
+        DepositSteps.depositMoney(user, senderAccountId.getId(), new BigDecimal("5000.00"));
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId1)
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
+                .receiverAccountId(Math.toIntExact(senderAccountId.getId()))
                 .amount(RandomData.getAmount())
                 .build();
 
         new TransferMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText("Invalid transfer: insufficient funds or invalid accounts"))
                 .post(transferRequest);
     }
@@ -293,49 +167,14 @@ public class TransferMoney extends BaseTest {
     @Test
     public void userCanTransferNotAuthorization() {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        int accountId1 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
-
-        int accountId2 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .path("id");
-
-        DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
-                .build();
-
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
-
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
+        CreateUserRequest user = AdminSteps.createUser();
+        CreateAccountResponse senderAccountId = AccountSteps.createAccount(user);
+        CreateAccountResponse receiverAccountId = AccountSteps.createAccount(user);
+        DepositSteps.depositMoney(user, senderAccountId.getId(), new BigDecimal("5000.00"));
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId2)
+                .senderAccountId(Math.toIntExact(senderAccountId.getId()))
+                .receiverAccountId(Math.toIntExact(senderAccountId.getId()))
                 .amount(RandomData.getAmount())
                 .build();
 

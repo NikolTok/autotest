@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.AdminCreateUserRequester;
 import requests.UpdateProfileRequester;
+import requests.steps.AdminSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
@@ -38,23 +39,14 @@ public class Profile extends BaseModel {
     @ParameterizedTest
     public void updateNameWithNotCorrectDate(String name, String expectedMessage) {
 
-        CreateUserRequest userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        CreateUserRequest user = AdminSteps.createUser();
 
         UpdateProfileRequest profileRequest = UpdateProfileRequest.builder()
                 .name(name)
                 .build();
 
         new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
                 .put(profileRequest);
     }
