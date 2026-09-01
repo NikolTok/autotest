@@ -1,10 +1,7 @@
 package practice_16.iteration2.pozitive_test.profile_test;
 
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.UpdateProfileRequest;
-import models.UpdateProfileResponse;
-import models.UserRole;
+import models.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -52,7 +49,7 @@ public class Profile extends BaseTest {
                 .as(UpdateProfileResponse.class);
 
         softly.assertThat(response.getCustomer().getName()).isEqualTo(name);
-        softly.assertThat(response.getMessage()).isEqualTo("Profile updated successfully");
+        softly.assertThat(response.getMessage()).isEqualTo(AlertMessage.PROFILE_UPDATED_SUCCESSFULLY.getMessage());
         softly.assertThat(response.getCustomer()).isNotNull();
     }
 }

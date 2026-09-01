@@ -1,10 +1,7 @@
 package practice_16.iteration2.negative_test.transfer_test;
 
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.DepositMoneyRequest;
-import models.TransferMoneyRequest;
-import models.UserRole;
+import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,23 +45,25 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId1 = new CreateAccountRequester(
+        AccountResponse accountId1 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
-        int accountId2 = new CreateAccountRequester(
+        AccountResponse accountId2 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
+
+        BigDecimal depositAmount = new BigDecimal("5000.00");
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
+                .id(accountId1.getId())
+                .balance(depositAmount)
                 .build();
 
         new DepositMoneyRequester(
@@ -72,14 +71,9 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.requestReturnsOK())
                 .post(depositRequest);
 
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
-
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId2)
+                .senderAccountId(accountId1.getId())
+                .receiverAccountId(accountId2.getId())
                 .amount(amount)
                 .build();
 
@@ -103,15 +97,15 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId1 = new CreateAccountRequester(
+        AccountResponse accountId1 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
+                .senderAccountId(accountId1.getId())
                 .receiverAccountId(99999)
                 .amount(RandomData.getAmount())
                 .build();
@@ -136,16 +130,16 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId2 = new CreateAccountRequester(
+        AccountResponse accountId2 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
                 .senderAccountId(99999)
-                .receiverAccountId(accountId2)
+                .receiverAccountId(accountId2.getId())
                 .amount(RandomData.getAmount())
                 .build();
 
@@ -261,16 +255,18 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId1 = new CreateAccountRequester(
+        AccountResponse accountId1 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
+
+        BigDecimal depositAmount = new BigDecimal("5000.00");
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
+                .id(accountId1.getId())
+                .balance(depositAmount)
                 .build();
 
         new DepositMoneyRequester(
@@ -279,8 +275,8 @@ public class TransferMoney extends BaseTest {
                 .post(depositRequest);
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId1)
+                .senderAccountId(accountId1.getId())
+                .receiverAccountId(accountId1.getId())
                 .amount(RandomData.getAmount())
                 .build();
 
@@ -304,23 +300,25 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId1 = new CreateAccountRequester(
+        AccountResponse accountId1 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
-        int accountId2 = new CreateAccountRequester(
+        AccountResponse accountId2 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
+
+        BigDecimal depositAmount = new BigDecimal("5000.00");
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
+                .id(accountId1.getId())
+                .balance(depositAmount)
                 .build();
 
         new DepositMoneyRequester(
@@ -328,14 +326,9 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.requestReturnsOK())
                 .post(depositRequest);
 
-        new DepositMoneyRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
-
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId2)
+                .senderAccountId(accountId1.getId())
+                .receiverAccountId(accountId2.getId())
                 .amount(RandomData.getAmount())
                 .build();
 

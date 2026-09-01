@@ -1,10 +1,7 @@
 package practice_16.iteration2.pozitive_test.deposit_test;
 
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.DepositMoneyRequest;
-import models.DepositMoneyResponse;
-import models.UserRole;
+import models.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -43,15 +40,17 @@ public class DepositMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId = new CreateAccountRequester(
+        AccountResponse accountId = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
+
+        int account = accountId.getId();
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(accountId.getId())
                 .balance(balance)
                 .build();
 
@@ -62,12 +61,12 @@ public class DepositMoney extends BaseTest {
                 .extract()
                 .as(DepositMoneyResponse.class);
 
-        softly.assertThat(response.getId()).isEqualTo(accountId);
-        softly.assertThat(response.getAccountNumber()).isEqualTo("ACC" + accountId);
+        softly.assertThat(response.getId()).isEqualTo(accountId.getId());
+        softly.assertThat(response.getAccountNumber()).isEqualTo("ACC" + account);
         softly.assertThat(response.getBalance()).isEqualByComparingTo(balance);
         softly.assertThat(response.getTransactions()).hasSize(1);
         softly.assertThat(response.getTransactions().get(0).getAmount()).isEqualByComparingTo(balance);
         softly.assertThat(response.getTransactions().get(0).getType()).isEqualTo("DEPOSIT");
-        softly.assertThat(response.getTransactions().get(0).getRelatedAccountId()).isEqualTo(accountId);
+        softly.assertThat(response.getTransactions().get(0).getRelatedAccountId()).isEqualTo(account);
     }
 }

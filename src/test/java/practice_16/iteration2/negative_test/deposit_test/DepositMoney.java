@@ -1,16 +1,11 @@
 package practice_16.iteration2.negative_test.deposit_test;
 
 import generators.RandomData;
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
+import models.AccountResponse;
 import models.CreateUserRequest;
 import models.DepositMoneyRequest;
-import models.DepositMoneyResponse;
 import models.UserRole;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,9 +18,6 @@ import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -55,15 +47,15 @@ public class DepositMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId = new CreateAccountRequester(
+        AccountResponse accountId = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(accountId.getId())
                 .balance(balance)
                 .build();
 
@@ -172,15 +164,15 @@ public class DepositMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId = new CreateAccountRequester(
+        AccountResponse accountId = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(accountId.getId())
                 .balance(RandomData.getBalance())
                 .build();
 

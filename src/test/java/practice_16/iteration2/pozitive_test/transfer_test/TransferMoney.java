@@ -1,6 +1,7 @@
 package practice_16.iteration2.pozitive_test.transfer_test;
 
 import generators.RandomData;
+import io.restassured.common.mapper.TypeRef;
 import models.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -39,23 +40,25 @@ public class TransferMoney extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
-        int accountId1 = new CreateAccountRequester(
+        AccountResponse accountId1 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
 
-        int accountId2 = new CreateAccountRequester(
+        AccountResponse accountId2 = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null)
+                .post()
                 .extract()
-                .path("id");
+                .as(AccountResponse.class);
+
+        BigDecimal depositAmount = new BigDecimal("5000.00");
 
         DepositMoneyRequest depositRequest = DepositMoneyRequest.builder()
-                .id(accountId1)
-                .balance(BigDecimal.valueOf(5000))
+                .id(accountId1.getId())
+                .balance(depositAmount)
                 .build();
 
         new DepositMoneyRequester(
@@ -69,8 +72,8 @@ public class TransferMoney extends BaseTest {
                 .post(depositRequest);
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(accountId2)
+                .senderAccountId(accountId1.getId())
+                .receiverAccountId(accountId2.getId())
                 .amount(amount)
                 .build();
 
@@ -81,51 +84,42 @@ public class TransferMoney extends BaseTest {
                 .extract()
                 .as(TransferMoneyResponse.class);
 
-        softly.assertThat(response.getSenderAccountId()).isEqualTo(accountId1);
-        softly.assertThat(response.getReceiverAccountId()).isEqualTo(accountId2);
-        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
+        softly.assertThat(response.getSenderAccountId()).isEqualTo(accountId1.getId());
+        softly.assertThat(response.getReceiverAccountId()).isEqualTo(accountId2.getId());
         softly.assertThat(response.getAmount()).isEqualByComparingTo(amount);
+        softly.assertThat(response.getMessage()).isEqualTo(AlertMessage.TRANSFER_SUCCESS.getMessage());
 
-        List<TransactionResponse> senderTransactions = new GetAccountTransactionsRequester(
+        GetAccountTransactionsRequester transactionsRequester = new GetAccountTransactionsRequester(
                         RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                        ResponseSpecs.requestReturnsOK())
-                        .get(accountId1)
+                        ResponseSpecs.requestReturnsOK());
+
+        List<TransactionResponse> senderTransactions =
+                transactionsRequester
+                        .get(accountId1.getId())
                         .extract()
-                        .jsonPath()
-                        .getList(".", TransactionResponse.class);
+                        .as(new TypeRef<List<TransactionResponse>>() {});
 
         List<TransactionResponse> receiverTransactions =
-                new GetAccountTransactionsRequester(
-                        RequestSpecs.authAsUser(
-                                userRequest.getUsername(),
-                                userRequest.getPassword()),
-                        ResponseSpecs.requestReturnsOK())
-                        .get(accountId2)
+                transactionsRequester
+                        .get(accountId2.getId())
                         .extract()
-                        .jsonPath()
-                        .getList(".", TransactionResponse.class);
+                        .as(new TypeRef<List<TransactionResponse>>() {});
 
-        TransactionResponse senderTransfer =
-                senderTransactions.stream()
-                        .filter(transaction -> transaction.getAmount().compareTo(amount) == 0)
-                        .filter(transaction -> transaction.getRelatedAccountId() == accountId2)
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("Transfer transaction was not found for sender"));
+        TransactionResponse senderTransfer = senderTransactions.stream()
+                .filter(transaction -> transaction.getAmount().compareTo(amount) == 0)
+                .filter(transaction -> transaction.getRelatedAccountId() == accountId2.getId())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Transfer transaction was not found for sender account " + accountId1.getId()));
 
-        TransactionResponse receiverTransfer =
-                receiverTransactions.stream()
-                        .filter(transaction -> transaction.getAmount().compareTo(amount) == 0)
-                        .filter(transaction -> transaction.getRelatedAccountId() == accountId1)
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("Transfer transaction was not found for receiver"));
+        TransactionResponse receiverTransfer = receiverTransactions.stream()
+                .filter(transaction -> transaction.getAmount().compareTo(amount) == 0)
+                .filter(transaction -> transaction.getRelatedAccountId() == accountId1.getId())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Transfer transaction was not found for receiver account " + accountId2.getId()));
 
-        // Проверяем транзакцию отправителя
         softly.assertThat(senderTransfer.getAmount()).isEqualByComparingTo(amount);
-        softly.assertThat(senderTransfer.getRelatedAccountId()).isEqualTo(accountId2);
-
-        // Проверяем транзакцию получателя
+        softly.assertThat(senderTransfer.getRelatedAccountId()).isEqualTo(accountId2.getId());
         softly.assertThat(receiverTransfer.getAmount()).isEqualByComparingTo(amount);
-        softly.assertThat(receiverTransfer.getRelatedAccountId()).isEqualTo(accountId1);
-
+        softly.assertThat(receiverTransfer.getRelatedAccountId()).isEqualTo(accountId1.getId());
     }
 }
