@@ -1,10 +1,7 @@
 package practice_16.iteration2.negative_test.deposit_test;
 
 import generators.RandomData;
-import models.AccountResponse;
-import models.CreateUserRequest;
-import models.DepositMoneyRequest;
-import models.UserRole;
+import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -86,7 +83,7 @@ public class DepositMoney extends BaseTest {
 
         new DepositMoneyRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
+                ResponseSpecs.requestReturnsForbiddenWithText(AlertMessage.FORBIDDEN_WITH_TEXT.getMessage()))
                 .post(depositRequest);
     }
 

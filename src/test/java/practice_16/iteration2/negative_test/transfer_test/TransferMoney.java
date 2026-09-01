@@ -145,7 +145,7 @@ public class TransferMoney extends BaseTest {
 
         new TransferMoneyRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
+                ResponseSpecs.requestReturnsForbiddenWithText(AlertMessage.FORBIDDEN_WITH_TEXT.getMessage()))
                 .post(transferRequest);
     }
 
@@ -282,7 +282,7 @@ public class TransferMoney extends BaseTest {
 
         new TransferMoneyRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequestWithText("Invalid transfer: insufficient funds or invalid accounts"))
+                ResponseSpecs.requestReturnsBadRequestWithText(AlertMessage.BAD_REQUEST_WITH_TEXT.getMessage()))
                 .post(transferRequest);
     }
 
