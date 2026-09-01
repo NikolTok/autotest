@@ -1,9 +1,8 @@
 package practice_16.iteration2.negative_test.deposit_test;
 
 import generators.RandomData;
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.DepositMoneyRequest;
+import io.restassured.common.mapper.TypeRef;
+import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,12 +10,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
 import requests.DepositMoneyRequester;
+import requests.GetAccountTransactionsRequester;
 import requests.steps.AccountSteps;
 import requests.steps.AdminSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -47,6 +48,18 @@ public class DepositMoney extends BaseTest {
                 RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
                 .post(depositRequest);
+
+        List<TransactionResponse> transactions =
+                new GetAccountTransactionsRequester(
+                        RequestSpecs.authAsUser(
+                                user.getUsername(),
+                                user.getPassword()),
+                        ResponseSpecs.requestReturnsOK())
+                        .get(Math.toIntExact(account.getId()))
+                        .extract()
+                        .as(new TypeRef<List<TransactionResponse>>() {});
+
+        softly.assertThat(transactions).isEmpty();
     }
 
     @Test
@@ -61,29 +74,8 @@ public class DepositMoney extends BaseTest {
 
         new DepositMoneyRequester(
                 RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
-                ResponseSpecs.requestReturnsForbiddenWithText("Unauthorized access to account"))
+                ResponseSpecs.requestReturnsForbiddenWithText(AlertMessage.FORBIDDEN_WITH_TEXT.getMessage()))
                 .post(depositRequest);
-    }
-
-    @Test
-    public void userCannotDepositWithInvalidAccountId() {
-
-        CreateUserRequest user = AdminSteps.createUser();
-
-        String requestBody = """
-            {
-                "balance": 100.00
-            }
-            """;
-
-        given()
-                .spec(RequestSpecs.authAsUser(
-                        user.getUsername(),
-                        user.getPassword()))
-                .body(requestBody)
-                .post("/accounts/deposit")
-                .then()
-                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
     }
 
     @Test

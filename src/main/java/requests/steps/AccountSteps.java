@@ -1,8 +1,10 @@
 package requests.steps;
 
+import models.AccountResponse;
 import models.CreateAccountResponse;
 import models.CreateUserRequest;
 import models.TransactionResponse;
+import requests.GetAccountRequester;
 import requests.GetAccountTransactionsRequester;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.ValidatedCrudRequester;
@@ -19,6 +21,15 @@ public class AccountSteps {
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated())
                 .post(null);
+    }
+
+    public static AccountResponse getAccount(CreateUserRequest user, long accountId) {
+        return new GetAccountRequester(
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                ResponseSpecs.requestReturnsOK())
+                .get(Math.toIntExact(accountId))
+                .extract()
+                .as(AccountResponse.class);
     }
 
     public static List<TransactionResponse> getTransactions(
