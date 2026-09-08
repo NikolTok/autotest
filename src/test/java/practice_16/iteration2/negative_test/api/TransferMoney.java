@@ -1,4 +1,4 @@
-package practice_16.iteration2.negative_test.transfer_test;
+package practice_16.iteration2.negative_test.api;
 
 import generators.RandomData;
 import models.*;
@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static requests.steps.AccountSteps.getAccount;
 import static requests.steps.AccountSteps.getTransactions;
 
 public class TransferMoney extends BaseTest {
@@ -57,16 +56,10 @@ public class TransferMoney extends BaseTest {
 
         List<TransactionResponse> receiverTransactions = getTransactions(user, receiverAccount.getId());
 
-        softly.assertThat(senderTransactions)
-                .noneMatch(transaction ->
-                        transaction.getType().equals("TRANSFER")
-                                && transaction.getRelatedAccountId()
+        softly.assertThat(senderTransactions).noneMatch(transaction -> transaction.getType().equals("TRANSFER") && transaction.getRelatedAccountId()
                                 == receiverAccount.getId());
 
-        softly.assertThat(receiverTransactions)
-                .noneMatch(transaction ->
-                        transaction.getType().equals("TRANSFER")
-                                && transaction.getRelatedAccountId()
+        softly.assertThat(receiverTransactions).noneMatch(transaction -> transaction.getType().equals("TRANSFER") && transaction.getRelatedAccountId()
                                 == senderAccount.getId());
     }
 

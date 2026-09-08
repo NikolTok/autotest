@@ -1,6 +1,5 @@
-package practice_16.iteration1;
+package practice_16.iteration1.api;
 
-import generators.RandomModelGenerator;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
 import models.LoginUserRequest;

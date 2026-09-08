@@ -1,4 +1,4 @@
-package practice_16.iteration2.negative_test.deposit_test;
+package practice_16.iteration2.negative_test.api;
 
 import generators.RandomData;
 import io.restassured.common.mapper.TypeRef;

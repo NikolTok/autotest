@@ -1,14 +1,11 @@
-package practice_16.iteration2.negative_test.profile_test;
+package practice_16.iteration2.negative_test.api;
 
-import generators.RandomData;
 import models.BaseModel;
 import models.CreateUserRequest;
 import models.UpdateProfileRequest;
-import models.UserRole;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
 import requests.UpdateProfileRequester;
 import requests.steps.AdminSteps;
 import spec.RequestSpecs;

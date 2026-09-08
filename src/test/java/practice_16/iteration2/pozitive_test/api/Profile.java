@@ -1,4 +1,4 @@
-package practice_16.iteration2.pozitive_test.profile_test;
+package practice_16.iteration2.pozitive_test.api;
 
 import models.CreateUserRequest;
 import models.UpdateProfileRequest;
