@@ -54,19 +54,11 @@ public class TransferMoney extends BaseTest {
                 .post(transferRequest);
 
         List<TransactionResponse> senderTransactions = getTransactions(user, senderAccount.getId());
-
         List<TransactionResponse> receiverTransactions = getTransactions(user, receiverAccount.getId());
 
-        softly.assertThat(senderTransactions)
-                .noneMatch(transaction ->
-                        transaction.getType().equals("TRANSFER")
-                                && transaction.getRelatedAccountId()
+        softly.assertThat(senderTransactions).noneMatch(transaction -> transaction.getType().equals(AlertMessage.TRANSFER) && transaction.getRelatedAccountId()
                                 == receiverAccount.getId());
-
-        softly.assertThat(receiverTransactions)
-                .noneMatch(transaction ->
-                        transaction.getType().equals("TRANSFER")
-                                && transaction.getRelatedAccountId()
+        softly.assertThat(receiverTransactions).noneMatch(transaction -> transaction.getType().equals(AlertMessage.TRANSFER) && transaction.getRelatedAccountId()
                                 == senderAccount.getId());
     }
 
@@ -84,7 +76,7 @@ public class TransferMoney extends BaseTest {
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
                 .senderAccountId(Math.toIntExact(senderAccount.getId()))
-                .receiverAccountId(99999)
+                .receiverAccountId(RandomData.getRandomNonExistentAccountId())
                 .amount(RandomData.getAmount())
                 .build();
 
@@ -97,9 +89,9 @@ public class TransferMoney extends BaseTest {
 
         softly.assertThat(senderTransactionsAfter).as("Sender transactions count should not change").hasSize(senderTransactionsBefore.size());
         softly.assertThat(senderTransactionsAfter).as("No TRANSFER transactions should be created").noneMatch(transaction ->
-                        transaction.getType().equals("TRANSFER"));
+                        transaction.getType().equals(AlertMessage.TRANSFER));
         softly.assertThat(senderTransactionsAfter).as("Only DEPOSIT transactions should exist")
-                .allMatch(transaction -> transaction.getType().equals("DEPOSIT"));
+                .allMatch(transaction -> transaction.getType().equals(AlertMessage.DEPOSIT));
     }
 
     @Test
@@ -111,7 +103,7 @@ public class TransferMoney extends BaseTest {
         List<TransactionResponse> receiverTransactionsBefore = AccountSteps.getTransactions(user, receiverAccount.getId());
 
         TransferMoneyRequest transferRequest = TransferMoneyRequest.builder()
-                .senderAccountId(99999)
+                .senderAccountId(RandomData.getRandomNonExistentAccountId())
                 .receiverAccountId(Math.toIntExact(receiverAccount.getId()))
                 .amount(RandomData.getAmount())
                 .build();
@@ -127,10 +119,10 @@ public class TransferMoney extends BaseTest {
                 .hasSize(receiverTransactionsBefore.size());
 
         softly.assertThat(receiverTransactionsAfter).as("No TRANSFER transactions should be created")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(receiverTransactionsAfter).as("Only DEPOSIT transactions should exist")
-                .allMatch(tx -> tx.getType().equals("DEPOSIT"));
+                .allMatch(tx -> tx.getType().equals(AlertMessage.DEPOSIT));
     }
 
     @Test
@@ -160,11 +152,11 @@ public class TransferMoney extends BaseTest {
 
         softly.assertThat(receiverTransactionsAfter)
                 .as("No TRANSFER transactions should be created")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(receiverTransactionsAfter)
                 .as("Only DEPOSIT transactions should exist")
-                .allMatch(tx -> tx.getType().equals("DEPOSIT"));
+                .allMatch(tx -> tx.getType().equals(AlertMessage.DEPOSIT));
     }
 
     @Test
@@ -192,10 +184,10 @@ public class TransferMoney extends BaseTest {
                 .hasSize(senderTransactionsBefore.size());
 
         softly.assertThat(senderTransactionsAfter).as("No TRANSFER transactions should be created")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(senderTransactionsAfter).as("Only DEPOSIT transactions should exist")
-                .allMatch(tx -> tx.getType().equals("DEPOSIT"));
+                .allMatch(tx -> tx.getType().equals(AlertMessage.DEPOSIT));
     }
 
     @Test
@@ -229,13 +221,13 @@ public class TransferMoney extends BaseTest {
                 .hasSize(senderTransactionsBefore.size());
 
         softly.assertThat(senderTransactionsAfter).as("No TRANSFER transactions should be created for sender")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(receiverTransactionsAfter).as("Receiver transactions count should not change")
                 .hasSize(receiverTransactionsBefore.size());
 
         softly.assertThat(receiverTransactionsAfter).as("No TRANSFER transactions should be created for receiver")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
     }
 
     @Test
@@ -266,10 +258,10 @@ public class TransferMoney extends BaseTest {
                 .hasSize(transactionsBefore.size());
 
         softly.assertThat(transactionsAfter).as("No TRANSFER transactions should be created")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(transactionsAfter).as("Only DEPOSIT transactions should exist")
-                .allMatch(tx -> tx.getType().equals("DEPOSIT"));
+                .allMatch(tx -> tx.getType().equals(AlertMessage.DEPOSIT));
     }
 
     @Test
@@ -293,10 +285,10 @@ public class TransferMoney extends BaseTest {
         List<TransactionResponse> receiverTransactions = AccountSteps.getTransactions(user, receiverAccountId.getId());
 
         softly.assertThat(senderTransactions).as("Only DEPOSIT transactions should exist for sender")
-                .allMatch(tx -> tx.getType().equals("DEPOSIT"));
+                .allMatch(tx -> tx.getType().equals(AlertMessage.DEPOSIT));
 
         softly.assertThat(senderTransactions).as("No TRANSFER transactions for sender")
-                .noneMatch(tx -> tx.getType().equals("TRANSFER"));
+                .noneMatch(tx -> tx.getType().equals(AlertMessage.TRANSFER));
 
         softly.assertThat(receiverTransactions).as("Receiver should have no transactions")
                 .isEmpty();

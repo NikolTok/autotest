@@ -1,9 +1,6 @@
 package practice_16.iteration2.pozitive_test.transfer_test;
 
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.TransferMoneyRequest;
-import models.TransferMoneyResponse;
+import models.*;
 import models.comparison.ModelAssertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -54,7 +51,7 @@ public class TransferMoney extends BaseTest {
                 .as(TransferMoneyResponse.class);
 
         ModelAssertions.assertThatModels(transferRequest, response).match();
-        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
+        softly.assertThat(response.getMessage()).isEqualTo(AlertMessage.TRANSFER_SUCCESS);
         TransferAssertions.assertSuccessfulTransfer(user, senderAccountId, receiverAccountId, amount, response);
     }
 }

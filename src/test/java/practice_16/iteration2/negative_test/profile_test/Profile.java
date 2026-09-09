@@ -1,20 +1,21 @@
 package practice_16.iteration2.negative_test.profile_test;
 
-import generators.RandomData;
 import models.BaseModel;
 import models.CreateUserRequest;
+import models.CustomerResponse;
 import models.UpdateProfileRequest;
-import models.UserRole;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
+import requests.GetCustomerProfileRequester;
 import requests.UpdateProfileRequester;
 import requests.steps.AdminSteps;
 import spec.RequestSpecs;
 import spec.ResponseSpecs;
 
 import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class Profile extends BaseModel {
 
@@ -49,5 +50,14 @@ public class Profile extends BaseModel {
                 RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 ResponseSpecs.requestReturnsBadRequestWithText(expectedMessage))
                 .put(profileRequest);
+
+        CustomerResponse actualProfile = new GetCustomerProfileRequester(
+                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                ResponseSpecs.requestReturnsOK())
+                .get()
+                .extract()
+                .as(CustomerResponse.class);
+
+        assertThat(actualProfile.getName()).isEqualTo(null);
     }
 }

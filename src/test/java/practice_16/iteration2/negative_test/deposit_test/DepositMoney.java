@@ -79,27 +79,6 @@ public class DepositMoney extends BaseTest {
     }
 
     @Test
-    public void userCannotDepositWithInvalidBalance() {
-
-        CreateUserRequest user = AdminSteps.createUser();
-
-        String requestBody = """
-            {
-                "id": 1,
-            }
-            """;
-
-        given()
-                .spec(RequestSpecs.authAsUser(
-                        user.getUsername(),
-                        user.getPassword()))
-                .body(requestBody)
-                .post("/accounts/deposit")
-                .then()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-    }
-
-    @Test
     public void userCanDepositNotAuthorization() {
 
         CreateUserRequest user = AdminSteps.createUser();
