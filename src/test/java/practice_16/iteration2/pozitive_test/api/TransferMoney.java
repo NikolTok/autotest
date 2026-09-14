@@ -1,21 +1,21 @@
 package practice_16.iteration2.pozitive_test.api;
 
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.TransferMoneyRequest;
-import models.TransferMoneyResponse;
-import models.comparison.ModelAssertions;
+import api.models.CreateAccountResponse;
+import api.models.CreateUserRequest;
+import api.models.TransferMoneyRequest;
+import api.models.TransferMoneyResponse;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.TransferMoneyRequester;
-import requests.assertions.TransferAssertions;
-import requests.steps.AccountSteps;
-import requests.steps.AdminSteps;
-import requests.steps.DepositSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.TransferMoneyRequester;
+import api.requests.assertions.TransferAssertions;
+import api.requests.steps.AccountSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.DepositSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.stream.Stream;

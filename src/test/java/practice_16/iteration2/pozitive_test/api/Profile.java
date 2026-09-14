@@ -1,17 +1,17 @@
 package practice_16.iteration2.pozitive_test.api;
 
-import models.CreateUserRequest;
-import models.UpdateProfileRequest;
-import models.UpdateProfileResponse;
-import models.comparison.ModelAssertions;
+import api.models.CreateUserRequest;
+import api.models.UpdateProfileRequest;
+import api.models.UpdateProfileResponse;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.UpdateProfileRequester;
-import requests.steps.AdminSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.UpdateProfileRequester;
+import api.requests.steps.AdminSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 
 import java.util.stream.Stream;
 

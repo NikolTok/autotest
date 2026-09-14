@@ -3,20 +3,20 @@ package practice_16.iteration2.negative_test.ui;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
+import api.models.CreateUserRequest;
+import api.models.LoginUserRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openqa.selenium.Alert;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.steps.AdminSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
+import ui.pages.UserDashboard;
 
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -24,19 +24,7 @@ import static com.codeborne.selenide.Selenide.*;
 import static com.codeborne.selenide.Selenide.switchTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class Profile {
-
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub\n";
-        Configuration.baseUrl = "http://172.31.80.1:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
+public class Profile extends BaseUiTest{
 
     public static Stream<Arguments> profileWithNotCorrectDate() {
         return Stream.of(
@@ -60,28 +48,17 @@ public class Profile {
     public void updateNameWithNotCorrectDate(String name, String expectedMessage) {
 
         CreateUserRequest user = AdminSteps.createUser();
+        authAsUser(user.getUsername(), user.getPassword());
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        UserDashboard dashboard = new UserDashboard().open();
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        dashboard
+                .openProfile()
+                .enterNewName(name)
+                .saveChanges();
 
-        Selenide.open("/dashboard");
-
-        $(Selectors.byText("Noname")).click();
-
-        $(Selectors.byAttribute("placeholder", "Enter new name")).setValue(name);
-        $(Selectors.byText("\uD83D\uDCBE Save Changes")).click();
-
-        Alert errorAlert = switchTo().alert();
-        String actualErrorMessage = errorAlert.getText();
-        assertThat(actualErrorMessage).as("Ошибка", expectedMessage).contains(expectedMessage);
-        errorAlert.accept();
+        dashboard.checkAlertMessageAndAccept(expectedMessage);
+        Selenide.refresh();
+        dashboard.verifyProfileName("Noname");
     }
 }

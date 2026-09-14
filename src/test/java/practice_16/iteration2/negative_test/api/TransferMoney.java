@@ -1,24 +1,24 @@
 package practice_16.iteration2.negative_test.api;
 
-import generators.RandomData;
-import models.*;
+import api.generators.RandomData;
+import api.models.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.TransferMoneyRequester;
-import requests.steps.AccountSteps;
-import requests.steps.AdminSteps;
-import requests.steps.DepositSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.TransferMoneyRequester;
+import api.requests.steps.AccountSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.DepositSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static requests.steps.AccountSteps.getTransactions;
+import static api.requests.steps.AccountSteps.getTransactions;
 
 public class TransferMoney extends BaseTest {
 

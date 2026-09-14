@@ -1,248 +1,190 @@
 package practice_16.iteration2.pozitive_test.ui;
 
-import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import io.restassured.common.mapper.TypeRef;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
-import models.TransactionResponse;
-import org.junit.jupiter.api.BeforeAll;
+import api.models.CreateAccountResponse;
+import api.models.CreateUserRequest;
+import api.models.TransactionResponse;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import org.openqa.selenium.By;
-import requests.GetAccountTransactionsRequester;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import ui.pages.BankAlert;
+import ui.pages.UserDashboard;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import static com.codeborne.selenide.Selenide.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TransferMoney {
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub\n";
-        Configuration.baseUrl = "http://172.31.80.1:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
+public class TransferMoney extends BaseUiTest{
 
     @Test
     public void userCanDepositWithCorrectDate() {
 
         CreateUserRequest user = AdminSteps.createUser();
+        authAsUser(user.getUsername(), user.getPassword());
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        UserDashboard dashboard = new UserDashboard().open();
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
 
-        Selenide.open("/dashboard");
+        List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        $(Selectors.byText("➕ Create New Account")).click();
-        Alert accountAlert  = switchTo().alert();
-        String accountAlertText = accountAlert .getText();
-        assertThat(accountAlertText).contains("✅ New Account Created! Account Number:");
-        accountAlert .accept();
+        assertThat(accounts).as("Должно быть создано 2 аккаунта").hasSize(2);
 
-        $(Selectors.byText("➕ Create New Account")).click();
-        Alert accountAlert2  = switchTo().alert();
-        String accountAlertText2 = accountAlert2.getText();
-        assertThat(accountAlertText2).contains("✅ New Account Created! Account Number:");
-        accountAlert2.accept();
+        CreateAccountResponse senderAccount = accounts.get(0);
+        CreateAccountResponse recipientAccount = accounts.get(1);
 
-        String accountNumber = extractAccountNumber(accountAlertText);
-        String accountNumber2 = extractAccountNumber(accountAlertText2);
+        String senderAccountNumber = senderAccount.getAccountNumber();
+        String recipientAccountNumber = recipientAccount.getAccountNumber();
+        int senderAccountId = Math.toIntExact(senderAccount.getId());
+        int recipientAccountId = Math.toIntExact(recipientAccount.getId());
 
-        $(Selectors.byText("💰 Deposit Money")).click();
+        BigDecimal depositAmount = new BigDecimal("5000.00");
 
-        BigDecimal depositAmount = BigDecimal.valueOf(5000);
+        dashboard.openDepositMoney().selectAccount(senderAccountNumber).enterDepositAmount(depositAmount).deposit();
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys(depositAmount.toString());
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
-        $(Selectors.byText("\uD83D\uDD04 Make a Transfer")).click();
+        dashboard.checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULY.format(depositAmount, senderAccountNumber));
 
-        BigDecimal transferAmount = BigDecimal.valueOf(100.15);
+        BigDecimal transferAmount = new BigDecimal("1.00");
+        String recipientName = "Noname";
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byAttribute("placeholder", "Enter recipient name")).sendKeys("Noname");
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(accountNumber2);
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys(transferAmount.toString());
-        $(Selectors.byText("Confirm details are correct")).click();
-        $(Selectors.byText("\uD83D\uDE80 Send Transfer")).click();
+        dashboard
+                .openTransferMoney()
+                .selectSenderAccount(senderAccountNumber)
+                .enterRecipientName(recipientName)
+                .selectRecipientAccount(recipientAccountNumber)
+                .enterTransferAmount(transferAmount)
+                .confirmDetails()
+                .sendTransfer();
 
-        String transferAlertText = switchTo().alert().getText();
+        dashboard.checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULY.format(transferAmount, recipientAccountNumber));
 
-        String expectedAlertText = String.format(Locale.US, "✅ Successfully transferred $%.2f to account %s!", transferAmount, accountNumber2);
-        assertThat(transferAlertText).isEqualTo(expectedAlertText);
-        switchTo().alert().accept();
+        List<TransactionResponse> senderTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(senderAccountId);
 
-        int accountId1 = extractAccountId(accountNumber);
-        int accountId2 = extractAccountId(accountNumber2);
+        List<TransactionResponse> recipientTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(recipientAccountId);
 
-        List<TransactionResponse> transactions1 = getTransactions(user.getUsername(), user.getPassword(), accountId1);
-        List<TransactionResponse> transactions2 = getTransactions(user.getUsername(), user.getPassword(), accountId2);
+        assertThat(senderTransactions).as("На счете-отправителе должно быть 2 транзакции: DEPOSIT + TRANSFER_OUT").hasSize(2);
 
-        assertThat(transactions1).as("На счете-отправителе должна быть 1 транзакция (списание)").hasSize(2);
-
-        TransactionResponse transferOut = transactions1.stream()
+        TransactionResponse transferOut = senderTransactions.stream()
                 .filter(t -> t.getType().equals("TRANSFER_OUT"))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Нет транзакции списания"));
+                .orElseThrow(() -> new AssertionError("Нет транзакции списания (TRANSFER_OUT)"));
 
         assertThat(transferOut.getAmount()).as("Сумма списания должна соответствовать переводу").isEqualByComparingTo(transferAmount);
+        assertThat(transferOut.getRelatedAccountId()).as("ID связанного счета должен быть ID получателя").isEqualTo(recipientAccountId);
+        assertThat(recipientTransactions).as("На счете-получателе должна быть 1 транзакция: TRANSFER_IN").hasSize(1);
 
-        assertThat(transactions2).as("На счете-получателе должна быть 1 транзакция (зачисление)").hasSize(1);
-
-        TransactionResponse transferIn = transactions2.get(0);
-        assertThat(transferIn.getAmount()).as("Сумма зачисления должна соответствовать переводу").isEqualByComparingTo(transferAmount);
+        TransactionResponse transferIn = recipientTransactions.getFirst();
         assertThat(transferIn.getType()).as("Тип транзакции должен быть TRANSFER_IN").isEqualTo("TRANSFER_IN");
+        assertThat(transferIn.getAmount()).as("Сумма зачисления должна соответствовать переводу").isEqualByComparingTo(transferAmount);
+
+        List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
+
+        CreateAccountResponse updatedSender = updatedAccounts.stream()
+                .filter(a -> a.getAccountNumber().equals(senderAccountNumber))
+                .findFirst()
+                .orElseThrow();
+
+        CreateAccountResponse updatedRecipient = updatedAccounts.stream()
+                .filter(a -> a.getAccountNumber().equals(recipientAccountNumber))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(updatedSender.getBalance()).as("Баланс отправителя должен быть: 5000.00 - 1.00 = 4999.00").isEqualByComparingTo(depositAmount.subtract(transferAmount));
+        assertThat(updatedRecipient.getBalance()).as("Баланс получателя должен быть равен сумме перевода").isEqualByComparingTo(transferAmount);
     }
 
     @Test
     public void userCanDepositWithCorrectDateTransferAgain() {
 
         CreateUserRequest user = AdminSteps.createUser();
+        authAsUser(user.getUsername(), user.getPassword());
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        UserDashboard dashboard = new UserDashboard().open();
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        Selenide.open("/dashboard");
+        assertThat(accounts).as("Должно быть создано 2 аккаунта").hasSize(2);
 
-        $(Selectors.byText("➕ Create New Account")).click();
-        Alert accountAlert  = switchTo().alert();
-        String accountAlertText = accountAlert .getText();
-        assertThat(accountAlertText).contains("✅ New Account Created! Account Number:");
-        accountAlert .accept();
+        CreateAccountResponse senderAccount = accounts.get(0);
+        CreateAccountResponse recipientAccount = accounts.get(1);
 
-        $(Selectors.byText("➕ Create New Account")).click();
-        Alert accountAlert2  = switchTo().alert();
-        String accountAlertText2 = accountAlert2.getText();
-        assertThat(accountAlertText2).contains("✅ New Account Created! Account Number:");
-        accountAlert2.accept();
+        String senderAccountNumber = senderAccount.getAccountNumber();
+        String recipientAccountNumber = recipientAccount.getAccountNumber();
+        int senderAccountId = Math.toIntExact(senderAccount.getId());
+        int recipientAccountId = Math.toIntExact(recipientAccount.getId());
 
-        String accountNumber = extractAccountNumber(accountAlertText);
-        String accountNumber2 = extractAccountNumber(accountAlertText2);
+        BigDecimal depositAmount = new BigDecimal("5000.00");
+        BigDecimal firstTransferAmount = new BigDecimal("100.00");
+        BigDecimal repeatTransferAmount = new BigDecimal("50.00");
+        String recipientName = "Noname";
 
-        int accountId1 = extractAccountId(accountNumber);
-        int accountId2 = extractAccountId(accountNumber2);
+        dashboard.openDepositMoney().selectAccount(senderAccountNumber).enterDepositAmount(depositAmount).deposit();
 
+        dashboard.checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULY.format(depositAmount, senderAccountNumber));
 
-        $(Selectors.byText("💰 Deposit Money")).click();
+        dashboard.openTransferMoney()
+                .selectSenderAccount(senderAccountNumber)
+                .enterRecipientName(recipientName)
+                .selectRecipientAccount(recipientAccountNumber)
+                .enterTransferAmount(firstTransferAmount)
+                .confirmDetails()
+                .sendTransfer();
 
-        BigDecimal depositAmount = BigDecimal.valueOf(5000);
+        dashboard.checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULY.format(firstTransferAmount, recipientAccountNumber));
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys(depositAmount.toString());
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
-        $(Selectors.byText("\uD83D\uDD04 Make a Transfer")).click();
-        $(Selectors.byText("\uD83D\uDD01 Transfer Again")).click();
-        $(Selectors.byText("\uD83D\uDD01 Repeat")).click();
+        List<TransactionResponse> senderTransactionsBefore = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(senderAccountId);
 
-        BigDecimal transferAmount = BigDecimal.valueOf(100.15);
+        assertThat(senderTransactionsBefore).as("Перед Transfer Again должны быть транзакции").isNotEmpty();
 
-        $("div.modal.show select.form-control").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $("div.modal.show input.form-control[type='number']").shouldBe(Condition.visible).setValue(transferAmount.toString());
-        $(Selectors.byText("Confirm details are correct")).shouldBe(Condition.visible).click();
-        $(Selectors.byText("🚀 Send Transfer")).shouldBe(Condition.visible).click();
+        dashboard.openTransferMoney()
+                .clickTransferAgain()
+                .searchTransaction(recipientName)
+                .clickRepeat()
+                .selectAccountInModal(senderAccountNumber)
+                .enterAmountInModal(repeatTransferAmount)
+                .confirmDetails()
+                .sendTransferInModal();
 
-        String transferAlertText = switchTo().alert().getText();
+        dashboard.checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULY.format(repeatTransferAmount, recipientAccountNumber));
 
-        String expectedAlertText = String.format(Locale.US, "✅ Transfer of $%.2f successful from Account %d to %d!", transferAmount, accountId1, accountId1);
-        assertThat(transferAlertText).isEqualTo(expectedAlertText);
-        switchTo().alert().accept();
+        List<TransactionResponse> senderTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(senderAccountId);
+        List<TransactionResponse> recipientTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(recipientAccountId);
 
-        List<TransactionResponse> transactions1 =
-                getTransactions(user.getUsername(), user.getPassword(), accountId1);
+        assertThat(senderTransactions).as("На счёте-отправителе должно быть 3 транзакции").hasSize(3);
 
-        List<TransactionResponse> transactions2 =
-                getTransactions(user.getUsername(), user.getPassword(), accountId2);
+        assertThat(senderTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder("DEPOSIT", "TRANSFER_OUT", "TRANSFER_OUT");
 
-        assertThat(transactions1)
-                .as("На счете должны быть депозит и две транзакции перевода")
-                .hasSize(3);
-
-        assertThat(transactions1)
-                .extracting(TransactionResponse::getType)
-                .containsExactlyInAnyOrder(
-                        "DEPOSIT",
-                        "TRANSFER_OUT",
-                        "TRANSFER_IN"
-                );
-
-        TransactionResponse transferOut = transactions1.stream()
+        List<TransactionResponse> transfersOut = senderTransactions.stream()
                 .filter(t -> t.getType().equals("TRANSFER_OUT"))
+                .toList();
+
+        assertThat(transfersOut).extracting(TransactionResponse::getAmount).containsExactlyInAnyOrder(firstTransferAmount, repeatTransferAmount);
+
+        transfersOut.forEach(t -> assertThat(t.getRelatedAccountId()).as("ID связанного счёта = ID получателя").isEqualTo(recipientAccountId));
+
+        assertThat(recipientTransactions).as("На счёте-получателе должно быть 2 транзакции").hasSize(2);
+        assertThat(recipientTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder("TRANSFER_IN", "TRANSFER_IN");
+
+        List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
+
+        CreateAccountResponse updatedSender = updatedAccounts.stream()
+                .filter(a -> a.getAccountNumber().equals(senderAccountNumber))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Нет транзакции TRANSFER_OUT"));
+                .orElseThrow();
 
-        assertThat(transferOut.getAmount())
-                .isEqualByComparingTo(transferAmount);
-
-        TransactionResponse transferIn = transactions1.stream()
-                .filter(t -> t.getType().equals("TRANSFER_IN"))
+        CreateAccountResponse updatedRecipient = updatedAccounts.stream()
+                .filter(a -> a.getAccountNumber().equals(recipientAccountNumber))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Нет транзакции TRANSFER_IN"));
+                .orElseThrow();
 
-        assertThat(transferIn.getAmount())
-                .isEqualByComparingTo(transferAmount);
+        BigDecimal expectedSenderBalance = depositAmount.subtract(firstTransferAmount).subtract(repeatTransferAmount);
+        BigDecimal expectedRecipientBalance = firstTransferAmount.add(repeatTransferAmount);
 
-        assertThat(transactions2)
-                .as("Второй счет не должен измениться")
-                .isEmpty();
-    }
+        assertThat(updatedSender.getBalance()).as("Баланс отправителя = 5000 - 100 - 50 = 4850").isEqualByComparingTo(expectedSenderBalance);
 
-    private String extractAccountNumber(String alertText) {
-        Pattern pattern = Pattern.compile("Account Number: (\\w+)");
-        Matcher matcher = pattern.matcher(alertText);
-        assertThat(matcher.find())
-                .as("Account number should be present in alert: %s", alertText)
-                .isTrue();
-        return matcher.group(1);
-    }
-
-    private int extractAccountId(String accountNumber) {
-        assertThat(accountNumber)
-                .as("Account number should have ACC prefix")
-                .startsWith("ACC");
-        return Integer.parseInt(accountNumber.substring(3));
-    }
-
-    private List<TransactionResponse> getTransactions(String username, String password, int accountId) {
-        return new GetAccountTransactionsRequester(
-                RequestSpecs.authAsUser(username, password),
-                ResponseSpecs.requestReturnsOK())
-                .get(accountId)
-                .extract()
-                .as(new TypeRef<List<TransactionResponse>>() {});
+        assertThat(updatedRecipient.getBalance()).as("Баланс получателя = 100 + 50 = 150").isEqualByComparingTo(expectedRecipientBalance);
     }
 }

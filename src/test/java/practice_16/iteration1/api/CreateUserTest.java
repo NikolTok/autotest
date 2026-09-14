@@ -1,19 +1,19 @@
 package practice_16.iteration1.api;
 
-import generators.RandomModelGenerator;
-import models.CreateUserRequest;
-import models.CreateUserResponse;
-import models.comparison.ModelAssertions;
+import api.generators.RandomModelGenerator;
+import api.models.CreateUserRequest;
+import api.models.CreateUserResponse;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.skelethon.requesters.ValidatedCrudRequester;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 
 import java.util.Arrays;
 import java.util.List;

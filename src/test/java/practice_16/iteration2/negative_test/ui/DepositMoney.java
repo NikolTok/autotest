@@ -1,49 +1,24 @@
 package practice_16.iteration2.negative_test.ui;
 
-import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import io.restassured.common.mapper.TypeRef;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
-import models.TransactionResponse;
-import org.junit.jupiter.api.BeforeAll;
+import api.models.CreateAccountResponse;
+import api.models.CreateUserRequest;
+import api.models.TransactionResponse;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.openqa.selenium.Alert;
-import requests.GetAccountTransactionsRequester;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import ui.pages.BankAlert;
+import ui.pages.UserDashboard;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static com.codeborne.selenide.Selenide.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DepositMoney {
-
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub\n";
-        Configuration.baseUrl = "http://172.31.80.1:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
+public class DepositMoney extends BaseUiTest{
 
     public static Stream<Arguments> depositNotCorrectDate() {
         return Stream.of(
@@ -58,84 +33,62 @@ public class DepositMoney {
     public void userCannotDepositInvalidAmount(BigDecimal balance, String expectedMessage) {
 
         CreateUserRequest user = AdminSteps.createUser();
+        authAsUser(user.getUsername(), user.getPassword());
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        UserDashboard dashboard = new UserDashboard().open();
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        Selenide.open("/dashboard");
-        $(Selectors.byText("➕ Create New Account")).click();
+        assertThat(accounts).hasSize(1);
 
-        Alert accountAlert  = switchTo().alert();
-        String accountAlertText = accountAlert .getText();
-        assertThat(accountAlertText).contains("✅ New Account Created! Account Number:");
-        accountAlert .accept();
+        CreateAccountResponse account = accounts.getFirst();
+        String accountNumber = account.getAccountNumber();
+        int accountId = Math.toIntExact(account.getId());
 
-        String accountNumber = extractAccountNumber(accountAlertText);
+        dashboard.openDepositMoney().selectAccount(accountNumber).enterDepositAmount(balance).deposit();
 
-        $(Selectors.byText("💰 Deposit Money")).click();
+        dashboard.checkAlertMessageAndAccept(expectedMessage);
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byAttribute("placeholder", "Enter amount")).setValue(balance.toString());
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
+        List<TransactionResponse> transactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(accountId);
 
-        Alert errorAlert = switchTo().alert();
-        String actualErrorMessage = errorAlert.getText();
-        assertThat(actualErrorMessage).as("Для суммы %s ожидалось сообщение: %s ", balance, expectedMessage).contains(expectedMessage);
-        errorAlert.accept();
+        assertThat(transactions).as("Транзакций не должно быть после неудачного депозита на сумму %s", balance).isEmpty();
 
-        int accountId = extractAccountId(accountNumber);
+        List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        List<TransactionResponse> transactions = new GetAccountTransactionsRequester(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .get(accountId)
-                .extract()
-                .as(new TypeRef<List<TransactionResponse>>() {});
-
-        assertThat(transactions).as("Транзакций не должно быть после неудачного депозита на сумму %s ", balance).isEmpty();
+        assertThat(updatedAccounts.getFirst().getBalance()).isZero();
     }
 
     @Test
     public void userCannotDepositInvalidWords() {
 
         CreateUserRequest user = AdminSteps.createUser();
+        authAsUser(user.getUsername(), user.getPassword());
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        UserDashboard dashboard = new UserDashboard().open();
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        Selenide.open("/dashboard");
-        $(Selectors.byText("➕ Create New Account")).click();
+        assertThat(accounts).hasSize(1);
 
-        Alert accountAlert  = switchTo().alert();
-        String accountAlertText = accountAlert .getText();
-        assertThat(accountAlertText).contains("✅ New Account Created! Account Number:");
-        accountAlert .accept();
+        CreateAccountResponse account = accounts.getFirst();
+        String accountNumber = account.getAccountNumber();
+        int accountId = Math.toIntExact(account.getId());
 
-        String accountNumber = extractAccountNumber(accountAlertText);
+        dashboard.openDepositMoney().selectAccount(accountNumber).enterDepositAmount("abc");
 
-        $(Selectors.byText("💰 Deposit Money")).click();
+        String actualValue = dashboard.getAmountInputValue();
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byAttribute("placeholder", "Enter amount")).setValue("abc");
+        assertThat(actualValue).isEmpty();
 
-        String actualValue = $(Selectors.byAttribute("placeholder", "Enter amount")).getValue();
+        List<TransactionResponse> transactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(accountId);
 
-        assertThat(actualValue).as("Поле для ввода суммы не должно содержать буквы").isEmpty();
+        assertThat(transactions).isEmpty();
+
+        List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
+
+        assertThat(updatedAccounts.getFirst().getBalance()).isZero();
     }
 
     @Test
@@ -143,59 +96,29 @@ public class DepositMoney {
 
         CreateUserRequest user = AdminSteps.createUser();
 
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user.getUsername(), user.getPassword());
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        UserDashboard dashboard = new UserDashboard().open();
+        dashboard.createNewAccount().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage());
 
-        Selenide.open("/dashboard");
-        $(Selectors.byText("➕ Create New Account")).click();
+        List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        Alert accountAlert  = switchTo().alert();
-        String accountAlertText = accountAlert .getText();
-        assertThat(accountAlertText).contains("✅ New Account Created! Account Number:");
-        accountAlert .accept();
+        assertThat(accounts).hasSize(1);
 
-        String accountNumber = extractAccountNumber(accountAlertText);
+        CreateAccountResponse account = accounts.getFirst();
+        String accountNumber = account.getAccountNumber();
+        int accountId = Math.toIntExact(account.getId());
 
-        $(Selectors.byText("💰 Deposit Money")).click();
+        dashboard.openDepositMoney().selectAccount(accountNumber).deposit();
 
-        $("select.form-control.account-selector").shouldBe(Condition.visible).selectOptionContainingText(accountNumber);
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
+        dashboard.checkAlertMessageAndAccept(BankAlert.DEPOSIT_INVALID.getMessage());
 
-        Alert errorAlert = switchTo().alert();
-        String actualErrorMessage = errorAlert.getText();
-        assertThat(actualErrorMessage).as("Для суммы %s ожидалось сообщение: %s ").contains("❌ Please enter a valid amount.");
-        errorAlert.accept();
+        List<TransactionResponse> transactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(accountId);
 
-        int accountId = extractAccountId(accountNumber);
+        assertThat(transactions).isEmpty();
 
-        List<TransactionResponse> transactions = new GetAccountTransactionsRequester(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .get(accountId)
-                .extract()
-                .as(new TypeRef<List<TransactionResponse>>() {});
+        List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        assertThat(transactions).as("Транзакций не должно быть после неудачного депозита на сумму %s ").isEmpty();
-    }
-
-    private String extractAccountNumber(String alertText) {
-
-        Pattern pattern = Pattern.compile("Account Number: (\\w+)");
-        Matcher matcher = pattern.matcher(alertText);
-        assertThat(matcher.find()).as("Account number should be present in alert: %s", alertText).isTrue();
-        return matcher.group(1);
-    }
-
-    private int extractAccountId(String accountNumber) {
-
-        assertThat(accountNumber).as("Account number should have ACC prefix").startsWith("ACC");
-        return Integer.parseInt(accountNumber.substring(3));
+        assertThat(updatedAccounts.getFirst().getBalance()).isZero();
     }
 }

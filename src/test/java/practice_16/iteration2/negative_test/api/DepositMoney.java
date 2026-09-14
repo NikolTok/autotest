@@ -1,20 +1,20 @@
 package practice_16.iteration2.negative_test.api;
 
-import generators.RandomData;
+import api.generators.RandomData;
+import api.models.*;
 import io.restassured.common.mapper.TypeRef;
-import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import requests.DepositMoneyRequester;
-import requests.GetAccountTransactionsRequester;
-import requests.steps.AccountSteps;
-import requests.steps.AdminSteps;
-import spec.RequestSpecs;
-import spec.ResponseSpecs;
+import api.requests.DepositMoneyRequester;
+import api.requests.GetAccountTransactionsRequester;
+import api.requests.steps.AccountSteps;
+import api.requests.steps.AdminSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.List;
