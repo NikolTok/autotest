@@ -1,16 +1,24 @@
 package practice_16.iteration1.ui;
 
 import api.configs.Config;
+import api.models.CreateUserRequest;
 import api.spec.RequestSpecs;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
+import common.extensions.AdminSessionExtension;
+import common.extensions.BrowserMatchExtension;
+import common.extensions.UserSessionExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 import practice_16.iteration2.BaseTest;
 
 import java.util.Map;
 
 import static com.codeborne.selenide.Selenide.executeJavaScript;
 
+@ExtendWith(AdminSessionExtension.class)
+@ExtendWith(UserSessionExtension.class)
+@ExtendWith(BrowserMatchExtension.class)
 public class BaseUiTest extends BaseTest {
     @BeforeAll
     public static void setupSelenoid() {
@@ -24,9 +32,13 @@ public class BaseUiTest extends BaseTest {
         );
     }
 
-    public void authAsUser(String username, String password) {
+    public static void authAsUser(String username, String password) {
         Selenide.open("/");
         String userAuthHeader = RequestSpecs.getUserAuthHeader(username, password);
         executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+    }
+
+    public static void authAsUser(CreateUserRequest createUserRequest) {
+        authAsUser(createUserRequest.getUsername(), createUserRequest.getPassword());
     }
 }

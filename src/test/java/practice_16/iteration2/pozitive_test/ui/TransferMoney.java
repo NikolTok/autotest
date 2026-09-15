@@ -3,8 +3,10 @@ package practice_16.iteration2.pozitive_test.ui;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
 import api.models.TransactionResponse;
+import api.models.TransactionType;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
+import common.data.TestData;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlert;
 import ui.pages.UserDashboard;
@@ -29,7 +31,7 @@ public class TransferMoney extends BaseUiTest{
 
         List<CreateAccountResponse> accounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
-        assertThat(accounts).as("Должно быть создано 2 аккаунта").hasSize(2);
+        assertThat(accounts).as(String.valueOf(BankAlert.DEPOSIT_TWO)).hasSize(2);
 
         CreateAccountResponse senderAccount = accounts.get(0);
         CreateAccountResponse recipientAccount = accounts.get(1);
@@ -39,14 +41,14 @@ public class TransferMoney extends BaseUiTest{
         int senderAccountId = Math.toIntExact(senderAccount.getId());
         int recipientAccountId = Math.toIntExact(recipientAccount.getId());
 
-        BigDecimal depositAmount = new BigDecimal("5000.00");
+        BigDecimal depositAmount = TestData.MAX_DEPOSIT.getAmount();
 
         dashboard.openDepositMoney().selectAccount(senderAccountNumber).enterDepositAmount(depositAmount).deposit();
 
         dashboard.checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULY.format(depositAmount, senderAccountNumber));
 
-        BigDecimal transferAmount = new BigDecimal("1.00");
-        String recipientName = "Noname";
+        BigDecimal transferAmount = TestData.MIN_TRANSFER.getAmount();
+        String recipientName = TestData.RECIPIENT_NAME.getString();
 
         dashboard
                 .openTransferMoney()
@@ -66,16 +68,16 @@ public class TransferMoney extends BaseUiTest{
         assertThat(senderTransactions).as("На счете-отправителе должно быть 2 транзакции: DEPOSIT + TRANSFER_OUT").hasSize(2);
 
         TransactionResponse transferOut = senderTransactions.stream()
-                .filter(t -> t.getType().equals("TRANSFER_OUT"))
+                .filter(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Нет транзакции списания (TRANSFER_OUT)"));
+                .orElseThrow(() -> new AssertionError(TransactionType.TRANSFER_OUT2));
 
         assertThat(transferOut.getAmount()).as("Сумма списания должна соответствовать переводу").isEqualByComparingTo(transferAmount);
         assertThat(transferOut.getRelatedAccountId()).as("ID связанного счета должен быть ID получателя").isEqualTo(recipientAccountId);
         assertThat(recipientTransactions).as("На счете-получателе должна быть 1 транзакция: TRANSFER_IN").hasSize(1);
 
         TransactionResponse transferIn = recipientTransactions.getFirst();
-        assertThat(transferIn.getType()).as("Тип транзакции должен быть TRANSFER_IN").isEqualTo("TRANSFER_IN");
+        assertThat(transferIn.getType()).as("Тип транзакции должен быть TRANSFER_IN").isEqualTo(TransactionType.TRANSFER_IN.getValue());
         assertThat(transferIn.getAmount()).as("Сумма зачисления должна соответствовать переводу").isEqualByComparingTo(transferAmount);
 
         List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
@@ -116,10 +118,11 @@ public class TransferMoney extends BaseUiTest{
         int senderAccountId = Math.toIntExact(senderAccount.getId());
         int recipientAccountId = Math.toIntExact(recipientAccount.getId());
 
-        BigDecimal depositAmount = new BigDecimal("5000.00");
-        BigDecimal firstTransferAmount = new BigDecimal("100.00");
-        BigDecimal repeatTransferAmount = new BigDecimal("50.00");
-        String recipientName = "Noname";
+        BigDecimal depositAmount = TestData.MAX_DEPOSIT.getAmount();
+        BigDecimal firstTransferAmount = TestData.THOUSAND_TRANSFER.getAmount();
+        BigDecimal repeatTransferAmount = TestData.MIN_TRANSFER.getAmount();
+
+        String recipientName = TestData.RECIPIENT_NAME.getString();
 
         dashboard.openDepositMoney().selectAccount(senderAccountNumber).enterDepositAmount(depositAmount).deposit();
 
@@ -141,24 +144,27 @@ public class TransferMoney extends BaseUiTest{
 
         dashboard.openTransferMoney()
                 .clickTransferAgain()
-                .searchTransaction(recipientName)
+                .searchTransaction(user.getUsername())
                 .clickRepeat()
                 .selectAccountInModal(senderAccountNumber)
                 .enterAmountInModal(repeatTransferAmount)
                 .confirmDetails()
                 .sendTransferInModal();
 
-        dashboard.checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULY.format(repeatTransferAmount, recipientAccountNumber));
+        dashboard.checkAlertMessageAndAccept(BankAlert.TRANSFER_AGAIN_SUCCESSFULY.format(repeatTransferAmount));
 
         List<TransactionResponse> senderTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(senderAccountId);
         List<TransactionResponse> recipientTransactions = new UserSteps(user.getUsername(), user.getPassword()).getAccountTransactions(recipientAccountId);
 
         assertThat(senderTransactions).as("На счёте-отправителе должно быть 3 транзакции").hasSize(3);
 
-        assertThat(senderTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder("DEPOSIT", "TRANSFER_OUT", "TRANSFER_OUT");
+        assertThat(senderTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder(
+                TransactionType.DEPOSIT.getValue(),
+                TransactionType.TRANSFER_OUT.getValue(),
+                TransactionType.TRANSFER_OUT.getValue());
 
         List<TransactionResponse> transfersOut = senderTransactions.stream()
-                .filter(t -> t.getType().equals("TRANSFER_OUT"))
+                .filter(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()))
                 .toList();
 
         assertThat(transfersOut).extracting(TransactionResponse::getAmount).containsExactlyInAnyOrder(firstTransferAmount, repeatTransferAmount);
@@ -166,7 +172,9 @@ public class TransferMoney extends BaseUiTest{
         transfersOut.forEach(t -> assertThat(t.getRelatedAccountId()).as("ID связанного счёта = ID получателя").isEqualTo(recipientAccountId));
 
         assertThat(recipientTransactions).as("На счёте-получателе должно быть 2 транзакции").hasSize(2);
-        assertThat(recipientTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder("TRANSFER_IN", "TRANSFER_IN");
+        assertThat(recipientTransactions).extracting(TransactionResponse::getType).containsExactlyInAnyOrder(
+                TransactionType.TRANSFER_IN.getValue(),
+                TransactionType.TRANSFER_IN.getValue());
 
         List<CreateAccountResponse> updatedAccounts = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts();
 
@@ -183,8 +191,8 @@ public class TransferMoney extends BaseUiTest{
         BigDecimal expectedSenderBalance = depositAmount.subtract(firstTransferAmount).subtract(repeatTransferAmount);
         BigDecimal expectedRecipientBalance = firstTransferAmount.add(repeatTransferAmount);
 
-        assertThat(updatedSender.getBalance()).as("Баланс отправителя = 5000 - 100 - 50 = 4850").isEqualByComparingTo(expectedSenderBalance);
+        assertThat(updatedSender.getBalance()).as("Баланс отправителя после двух переводов").isEqualByComparingTo(expectedSenderBalance);
 
-        assertThat(updatedRecipient.getBalance()).as("Баланс получателя = 100 + 50 = 150").isEqualByComparingTo(expectedRecipientBalance);
+        assertThat(updatedRecipient.getBalance()).as("Баланс получателя после двух переводов").isEqualByComparingTo(expectedRecipientBalance);
     }
 }

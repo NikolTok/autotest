@@ -5,6 +5,7 @@ import api.models.CreateUserRequest;
 import api.models.TransactionResponse;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
+import common.data.TestData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -76,7 +77,7 @@ public class DepositMoney extends BaseUiTest{
         String accountNumber = account.getAccountNumber();
         int accountId = Math.toIntExact(account.getId());
 
-        dashboard.openDepositMoney().selectAccount(accountNumber).enterDepositAmount("abc");
+        dashboard.openDepositMoney().selectAccount(accountNumber).enterDepositAmount(TestData.TEST_WORD.getString());
 
         String actualValue = dashboard.getAmountInputValue();
 

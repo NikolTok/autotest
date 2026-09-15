@@ -5,6 +5,7 @@ import api.models.CreateUserRequest;
 import api.models.TransactionResponse;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
+import common.data.TestData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -49,8 +50,8 @@ public class TransferMoney extends BaseUiTest{
         String recipientAccountNumber = recipientAccount.getAccountNumber();
         int senderAccountId = Math.toIntExact(senderAccount.getId());
 
-        BigDecimal depositAmount = new BigDecimal("5000.00");
-        String recipientName = "Noname";
+        BigDecimal depositAmount = TestData.MAX_DEPOSIT.getAmount();
+        String recipientName = TestData.RECIPIENT_NAME.getString();
 
         dashboard
                 .openDepositMoney()
@@ -105,8 +106,8 @@ public class TransferMoney extends BaseUiTest{
         String recipientAccountNumber = recipientAccount.getAccountNumber();
         int senderAccountId = Math.toIntExact(senderAccount.getId());
 
-        BigDecimal depositAmount = new BigDecimal("5000.00");
-        String recipientName = "Noname";
+        BigDecimal depositAmount = TestData.MAX_DEPOSIT.getAmount();
+        String recipientName = TestData.RECIPIENT_NAME.getString();
 
         dashboard.openDepositMoney()
                 .selectAccount(senderAccountNumber)

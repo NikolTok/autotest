@@ -4,6 +4,7 @@ import api.generators.RandomData;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
 import api.models.TransactionResponse;
+import api.models.TransactionType;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ public class DepositMoney extends BaseUiTest {
         TransactionResponse transaction = transactions.getFirst();
 
         assertThat(transaction.getAmount()).isEqualByComparingTo(depositAmount);
-        assertThat(transaction.getType()).isEqualTo("DEPOSIT");
+        assertThat(transaction.getType()).isEqualTo(TransactionType.DEPOSIT);
         assertThat(transaction.getRelatedAccountId()).isEqualTo(accountId);
     }
 }

@@ -1,28 +1,15 @@
 package practice_16.iteration2.negative_test.ui;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
 import api.models.CreateUserRequest;
-import api.models.LoginUserRequest;
-import org.junit.jupiter.api.BeforeAll;
+import api.requests.steps.AdminSteps;
+import com.codeborne.selenide.Selenide;
+import common.data.TestData;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.openqa.selenium.Alert;
-import api.requests.skelethon.Endpoint;
-import api.requests.skelethon.requesters.CrudRequester;
-import api.requests.steps.AdminSteps;
-import api.spec.RequestSpecs;
-import api.spec.ResponseSpecs;
 import ui.pages.UserDashboard;
 
-import java.util.Map;
 import java.util.stream.Stream;
-
-import static com.codeborne.selenide.Selenide.*;
-import static com.codeborne.selenide.Selenide.switchTo;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class Profile extends BaseUiTest{
 
@@ -59,6 +46,6 @@ public class Profile extends BaseUiTest{
 
         dashboard.checkAlertMessageAndAccept(expectedMessage);
         Selenide.refresh();
-        dashboard.verifyProfileName("Noname");
+        dashboard.verifyProfileName(TestData.RECIPIENT_NAME.getString());
     }
 }
