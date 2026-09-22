@@ -35,7 +35,6 @@ public class RandomModelGenerator {
                 } else {
                     value = generateRandomValue(field);
                 }
-
                 field.set(instance, value);
             }
 

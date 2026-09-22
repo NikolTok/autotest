@@ -33,12 +33,6 @@ public class LoginUserTest extends BaseTest {
     public void userCanGenerateAuthTokenTest() {
         CreateUserRequest userRequest = AdminSteps.createUser();
 
-        new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_USER,
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
         new CrudRequester(RequestSpecs.unAuthSpec(),
                 Endpoint.LOGIN,
                 ResponseSpecs.requestReturnsOK())

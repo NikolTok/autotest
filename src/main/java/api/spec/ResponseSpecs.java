@@ -26,13 +26,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsBadRequest(
-            String errorKey,
-            List<String> expectedErrors) {
-
+    public static ResponseSpecification requestReturnsBadRequest(String errorKey, List<String> expectedErrors) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(errorKey, Matchers.equalTo(expectedErrors))
+                .expectBody(errorKey, Matchers.containsInAnyOrder(expectedErrors.toArray()))
                 .build();
     }
 

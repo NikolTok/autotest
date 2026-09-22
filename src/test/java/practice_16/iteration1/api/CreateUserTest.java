@@ -4,18 +4,17 @@ import api.generators.RandomModelGenerator;
 import api.models.CreateUserRequest;
 import api.models.CreateUserResponse;
 import api.models.comparison.ModelAssertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import practice_16.iteration2.BaseTest;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.spec.RequestSpecs;
 import api.spec.ResponseSpecs;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import practice_16.iteration2.BaseTest;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -36,9 +35,9 @@ public class CreateUserTest extends BaseTest {
 
     public static Stream<Arguments> userInvalidDate() {
         return Stream.of(
-                Arguments.of("   ", "Password33$", "USER", "username", Arrays.asList("Username must contain only letters, digits, dashes, underscores, and dots", "Username cannot be blank")),
-                Arguments.of("ab", "Password33$", "USER", "username", Arrays.asList("Username must be between 3 and 15 characters")),
-                Arguments.of("abc$", "Password33$", "USER", "username", Arrays.asList("Username must contain only letters, digits, dashes, underscores, and dots"))
+                Arguments.of("   ", "Password33$", "USER", "username", List.of("Username cannot be blank", "Username must contain only letters, digits, dashes, underscores, and dots")),
+                Arguments.of("ab", "Password33$", "USER", "username", List.of("Username must be between 3 and 15 characters")),
+                Arguments.of("abc$", "Password33$", "USER", "username", List.of("Username must contain only letters, digits, dashes, underscores, and dots"))
         );
     }
 
