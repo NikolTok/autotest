@@ -1,9 +1,12 @@
 package practice_16.iteration2.pozitive_test.api;
 
+import api.dao.UserDao;
+import api.dao.comparison.DaoAndModelAssertions;
 import api.models.CreateUserRequest;
 import api.models.UpdateProfileRequest;
 import api.models.UpdateProfileResponse;
 import api.models.comparison.ModelAssertions;
+import api.requests.steps.DataBaseSteps;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -44,5 +47,16 @@ public class Profile extends BaseTest {
         ModelAssertions.assertThatModels(profileRequest, response).match();
         softly.assertThat(response.getCustomer()).isNotNull();
         softly.assertThat(response.getMessage()).isEqualTo("Profile updated successfully");
+
+        UserDao userDao = DataBaseSteps.getUserByUsername(user.getUsername());
+
+        softly.assertThat(userDao).as("Пользователь должен существовать в БД").isNotNull();
+        softly.assertThat(userDao.getName()).as("Имя пользователя в БД должно соответствовать новому имени").isEqualTo(name);
+        softly.assertThat(userDao.getUsername()).as("Username не должен измениться").isEqualTo(user.getUsername());
+        softly.assertThat(userDao.getRole()).as("Роль не должна измениться").isEqualTo(user.getRole());
+
+        if (response.getCustomer() != null) {
+            DaoAndModelAssertions.assertThat(response.getCustomer(), userDao).match();
+        }
     }
 }

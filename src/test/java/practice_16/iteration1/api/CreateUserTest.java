@@ -1,30 +1,34 @@
 package practice_16.iteration1.api;
 
+import api.dao.UserDao;
+import api.dao.comparison.DaoAndModelAssertions;
 import api.generators.RandomModelGenerator;
 import api.models.CreateUserRequest;
 import api.models.CreateUserResponse;
 import api.models.comparison.ModelAssertions;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.steps.DataBaseSteps;
+import api.spec.RequestSpecs;
+import api.spec.ResponseSpecs;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import practice_16.iteration2.BaseTest;
-import api.requests.skelethon.Endpoint;
-import api.requests.skelethon.requesters.CrudRequester;
-import api.requests.skelethon.requesters.ValidatedCrudRequester;
-import api.spec.RequestSpecs;
-import api.spec.ResponseSpecs;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 public class CreateUserTest extends BaseTest {
 
     @Test
     public void adminCanCreateUserWithCorrectDate() {
-        CreateUserRequest createUserRequest =
-                RandomModelGenerator.generate(CreateUserRequest.class);
+        CreateUserRequest createUserRequest = RandomModelGenerator.generate(CreateUserRequest.class);
 
         CreateUserResponse createUserResponse = new ValidatedCrudRequester<CreateUserResponse>(RequestSpecs.adminSpec(),
                 Endpoint.ADMIN_USER,
@@ -32,6 +36,9 @@ public class CreateUserTest extends BaseTest {
                 .post(createUserRequest);
 
         ModelAssertions.assertThatModels(createUserRequest, createUserResponse).match();
+
+        UserDao userDao = DataBaseSteps.getUserByUsername(createUserRequest.getUsername());
+        DaoAndModelAssertions.assertThat(createUserResponse, userDao).match();
     }
 
     public static Stream<Arguments> userInvalidDate() {
@@ -57,5 +64,7 @@ public class CreateUserTest extends BaseTest {
                 Endpoint.ADMIN_USER,
                 ResponseSpecs.requestReturnsBadRequest(errorKey, expectedErrors))
                 .post(createUserRequest);
+
+        assertNull(DataBaseSteps.getUserByUsername(createUserRequest.getUsername()));
     }
 }
