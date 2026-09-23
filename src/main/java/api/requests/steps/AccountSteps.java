@@ -1,46 +1,58 @@
 package api.requests.steps;
 
-import api.models.*;
-import api.requests.GetAccountRequester;
-import api.requests.GetAccountTransactionsRequester;
+import api.models.CreateAccountResponse;
+import api.models.TransactionResponse;
+import api.models.TransferMoneyRequest;
+import api.models.TransferMoneyResponse;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.spec.RequestSpecs;
 import api.spec.ResponseSpecs;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class AccountSteps {
 
-    public static CreateAccountResponse createAccount(CreateUserRequest user) {
+    private final String username;
+    private final String password;
+
+    public AccountSteps(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
+    public CreateAccountResponse createAccount() {
         return new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+                RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated())
                 .post(null);
     }
 
-    public static AccountResponse getAccount(CreateUserRequest user, long accountId) {
-        return new GetAccountRequester(
-                RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
+    public List<TransactionResponse> getTransactions(Long accountId) {
+        return new ValidatedCrudRequester<TransactionResponse>(
+                RequestSpecs.authAsUser(username, password),
+                Endpoint.CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK())
-                .get(Math.toIntExact(accountId))
-                .extract()
-                .as(AccountResponse.class);
+                .getAll(TransactionResponse[].class);
     }
 
-    public static List<TransactionResponse> getTransactions(
-            CreateUserRequest user,
-            long accountId) {
+    public TransferMoneyResponse transferWithFraudCheck(
+            Long senderAccountId,
+            Long receiverAccountId,
+            BigDecimal amount
+    ) {
+        TransferMoneyRequest request = TransferMoneyRequest.builder()
+                .senderAccountId(Math.toIntExact(senderAccountId))
+                .receiverAccountId(Math.toIntExact(receiverAccountId))
+                .amount(amount)
+                .build();
 
-        return new GetAccountTransactionsRequester(
-                RequestSpecs.authAsUser(
-                        user.getUsername(),
-                        user.getPassword()),
+        return new ValidatedCrudRequester<TransferMoneyResponse>(
+                RequestSpecs.authAsUser(username, password),
+                Endpoint.TRANSFER_WITH_FRAUD_CHECK,
                 ResponseSpecs.requestReturnsOK())
-                .get(Math.toIntExact(accountId))
-                .extract()
-                .jsonPath()
-                .getList(".", TransactionResponse.class);
+                .post(request);
     }
 }

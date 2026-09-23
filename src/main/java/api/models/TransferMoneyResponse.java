@@ -12,8 +12,15 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Builder
 public class TransferMoneyResponse extends BaseModel {
+
     private int receiverAccountId;
     private BigDecimal amount;
     private String message;
     private int senderAccountId;
+
+    private String status;
+    private Double fraudRiskScore;
+    private String fraudReason;
+    private boolean requiresManualReview;
+    private boolean requiresVerification;
 }
