@@ -1,3 +1,11 @@
+.env
+.env.local
+.env.*.local
+*.token
+*.pem
+*.key
+secrets/
+
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
