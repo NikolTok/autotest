@@ -12,18 +12,10 @@ WORKDIR /app
 
 COPY pom.xml .
 
-RUN mvn dependency:go-offline
+RUN mvn dependency:go-offline -B
 
 COPY . .
 
 USER root
 
-CMD /bin/bash -c " \
-mkdir -p /app/logs ; \
-{ \
-echo '>>> Running test with profile: ${TEST_PROFILE}' ; \
-mvn test -q -P ${TEST_PROFILE} ; \
-\
-echo '>>> Running surefire-report:report' ; \
-mvn -DskipTests=true surefire-report:report ; \
-} > /app/logs/run.log 2>&1"
+CMD ["/bin/bash", "-c", "mkdir -p /app/logs && mvn test 2>&1 | tee /app/logs/run.log"]

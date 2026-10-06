@@ -1,0 +1,63 @@
+name: Build and Push Docker Image
+
+# ✅ Триггер: только при изменениях в src/
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'src/**'           # ← только при изменениях в src
+      - 'pom.xml'          # ← и при изменении pom.xml
+      - 'checkstyle.xml'   # ← и checkstyle
+      - '.github/workflows/docker-publish.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    name: Build, Test, Checkstyle, Push
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонировать репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Установить JDK 21
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '21'
+          cache: 'maven'
+
+      # 3. Сделать mvnw исполняемым
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # 4. Сборка + тесты + Checkstyle
+      - name: Build with Maven
+        run: ./mvnw clean verify -q
+
+      # 5. Войти в Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 6. Установить короткий commit hash
+      - name: Set commit hash
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      # 7. Собрать и запушить Docker-образ
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/nbank-tests:${{ steps.vars.outputs.sha_short }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/nbank-tests:latest
