@@ -8,22 +8,10 @@ services:
 
   frontend:
     image: nobugsme/nbank-ui:latest
-    expose:
-      - "80"
-    depends_on:
-      - backend
-    networks:
-      - nbank-network
-
-  nginx:
-    image: nginx:latest
     ports:
-      - "80:80"
-    volumes:
-      - ./config/nginx.conf:/etc/nginx.conf:ro
+      - "3000:80"
     depends_on:
       - backend
-      - frontend
     networks:
       - nbank-network
 
