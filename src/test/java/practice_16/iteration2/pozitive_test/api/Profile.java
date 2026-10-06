@@ -45,8 +45,8 @@ public class Profile extends BaseTest {
                 .as(UpdateProfileResponse.class);
 
         ModelAssertions.assertThatModels(profileRequest, response).match();
-        softly.assertThat(response.getCustomer()).isNotNull();
-        softly.assertThat(response.getMessage()).isEqualTo("Profile updated successfully");
+        softly.assertThat(response.getCustomer()).as("Customer в ответе не должен быть null").isNotNull();
+        softly.assertThat(response.getMessage()).as("Сообщение об успехе").isEqualTo("Profile updated successfully");
 
         UserDao userDao = DataBaseSteps.getUserByUsername(user.getUsername());
 
@@ -55,8 +55,6 @@ public class Profile extends BaseTest {
         softly.assertThat(userDao.getUsername()).as("Username не должен измениться").isEqualTo(user.getUsername());
         softly.assertThat(userDao.getRole()).as("Роль не должна измениться").isEqualTo(user.getRole());
 
-        if (response.getCustomer() != null) {
-            DaoAndModelAssertions.assertThat(response.getCustomer(), userDao).match();
-        }
+        DaoAndModelAssertions.assertThat(response.getCustomer(), userDao).match();
     }
 }

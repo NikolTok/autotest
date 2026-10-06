@@ -119,9 +119,7 @@ public class DepositMoney extends BaseTest {
 
         AccountDao accountDao = DataBaseSteps.getAccountById(1L);
 
-        if (accountDao != null) {
-            softly.assertThat(accountDao.getBalance()).as("Баланс счёта не должен измениться после невалидного запроса").isEqualTo(0.0);
-        }
+        softly.assertThat(accountDao).as("Счёт с id=1 не должен существовать после невалидного запроса").isNull();
     }
 
     @Test
