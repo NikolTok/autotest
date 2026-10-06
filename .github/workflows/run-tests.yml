@@ -24,6 +24,9 @@ jobs:
           restore-keys: |
             ${{runner.os}}-maven-
 
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
       - name: Set up services
         run: cd infra/docker_compose && bash restart_docker.sh %% cd ../..
 
