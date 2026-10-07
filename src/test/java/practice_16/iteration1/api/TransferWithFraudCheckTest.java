@@ -1,14 +1,13 @@
 package practice_16.iteration1.api;
 
-import api.models.CreateAccountResponse;
-import api.models.CreateUserRequest;
-import api.models.DepositMoneyResponse;
-import api.models.TransferMoneyResponse;
+import api.models.*;
 import api.models.comparison.ModelAssertions;
 import api.requests.steps.AccountSteps;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.DepositSteps;
 import common.annotations.FraudCheckMock;
+import common.data.FraudDecision;
+import common.data.FraudTestData;
 import common.extensions.TimingExtension;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
@@ -48,8 +47,8 @@ public class TransferWithFraudCheckTest extends BaseTest {
     @FraudCheckMock(
             status = "SUCCESS",
             decision = "APPROVED",
-            riskScore = 0.2,
-            reason = "Low risk transaction",
+            riskScore = FraudTestData.LOW_RISK_SCORE,
+            reason = FraudTestData.LOW_RISK_REASON,
             requiresManualReview = false,
             additionalVerificationRequired = false
     )
@@ -60,19 +59,19 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
 
         TransferMoneyResponse expectedResponse = TransferMoneyResponse.builder()
-                .status("APPROVED")
-                .message("Transfer approved and processed immediately")
-                .amount(TRANSFER_AMOUNT)
+                .status(FraudDecision.APPROVED.getValue())
+                .message(FraudTestData.APPROVED_MESSAGE)
+                .amount(FraudTestData.TRANSFER_AMOUNT)
                 .senderAccountId(Math.toIntExact(account1.getId()))
                 .receiverAccountId(Math.toIntExact(account2.getId()))
-                .fraudRiskScore(0.2)
-                .fraudReason("Low risk transaction")
+                .fraudRiskScore(FraudTestData.LOW_RISK_SCORE)
+                .fraudReason(FraudTestData.LOW_RISK_REASON)
                 .requiresManualReview(false)
                 .requiresVerification(false)
                 .build();
@@ -85,8 +84,8 @@ public class TransferWithFraudCheckTest extends BaseTest {
     @FraudCheckMock(
             status = "SUCCESS",
             decision = "BLOCKED",
-            riskScore = 0.95,
-            reason = "High risk transaction",
+            riskScore = FraudTestData.HIGH_RISK_SCORE,
+            reason = FraudTestData.HIGH_RISK_REASON,
             requiresManualReview = false,
             additionalVerificationRequired = false
     )
@@ -97,18 +96,17 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo("BLOCKED");
-        softly.assertThat(transferResponse.getMessage()).as("Сообщение").contains("blocked");
-        softly.assertThat(transferResponse.getFraudRiskScore()).as("Risk score").isEqualTo(0.95);
-        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo("High risk transaction");
+        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo(FraudDecision.BLOCKED.getValue());
+        softly.assertThat(transferResponse.getMessage()).as("Сообщение").contains(FraudTestData.BLOCKED_MESSAGE_PART);
+        softly.assertThat(transferResponse.getFraudRiskScore()).as("Risk score").isEqualTo(FraudTestData.HIGH_RISK_SCORE);
+        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo(FraudTestData.HIGH_RISK_REASON);
         softly.assertThat(transferResponse.isRequiresManualReview()).as("Manual review").isFalse();
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     @Test
@@ -116,8 +114,8 @@ public class TransferWithFraudCheckTest extends BaseTest {
     @FraudCheckMock(
             status = "SUCCESS",
             decision = "REVIEW_REQUIRED",
-            riskScore = 0.6,
-            reason = "Suspicious activity",
+            riskScore = FraudTestData.SUSPICIOUS_RISK_SCORE,
+            reason = FraudTestData.SUSPICIOUS_REASON,
             requiresManualReview = true,
             additionalVerificationRequired = false
     )
@@ -128,16 +126,15 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo("REVIEW_REQUIRED");
+        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo(FraudDecision.REVIEW_REQUIRED.getValue());
         softly.assertThat(transferResponse.isRequiresManualReview()).as("Manual review").isTrue();
-        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo("Suspicious activity");
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo(FraudTestData.SUSPICIOUS_REASON);
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     @Test
@@ -145,8 +142,8 @@ public class TransferWithFraudCheckTest extends BaseTest {
     @FraudCheckMock(
             status = "SUCCESS",
             decision = "VERIFICATION_REQUIRED",
-            riskScore = 0.75,
-            reason = "Additional verification needed",
+            riskScore = FraudTestData.VERIFICATION_RISK_SCORE,
+            reason = FraudTestData.VERIFICATION_REASON,
             requiresManualReview = false,
             additionalVerificationRequired = true
     )
@@ -157,16 +154,15 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo("VERIFICATION_REQUIRED");
+        softly.assertThat(transferResponse.getStatus()).as("Статус").isEqualTo(FraudDecision.VERIFICATION_REQUIRED.getValue());
         softly.assertThat(transferResponse.isRequiresVerification()).as("Verification").isTrue();
-        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo("Additional verification needed");
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(transferResponse.getFraudReason()).as("Reason").isEqualTo(FraudTestData.VERIFICATION_REASON);
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     @Test
@@ -174,10 +170,10 @@ public class TransferWithFraudCheckTest extends BaseTest {
     @FraudCheckMock(
             status = "SUCCESS",
             decision = "APPROVED",
-            riskScore = 0.2,
-            reason = "Low risk transaction",
-            delayMs = 10_000,   // ← 10 секунд задержки
-            port = 8081
+            riskScore = FraudTestData.LOW_RISK_SCORE,
+            reason = FraudTestData.LOW_RISK_REASON,
+            delayMs = FraudTestData.TIMEOUT_DELAY_MS,
+            port = FraudTestData.PORT_TIMEOUT
     )
     public void transferFallbackOnTimeout() {
 
@@ -186,15 +182,14 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при timeout").isEqualTo("REVIEW_REQUIRED");
+        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при timeout").isEqualTo(FraudDecision.REVIEW_REQUIRED.getValue());
         softly.assertThat(transferResponse.isRequiresManualReview()).as("Manual review").isTrue();
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     @Test
@@ -203,7 +198,7 @@ public class TransferWithFraudCheckTest extends BaseTest {
             status = "ERROR",
             decision = "UNKNOWN",
             httpStatus = 500,
-            port = 8082
+            port = FraudTestData.PORT_SERVER_ERROR
     )
     public void transferFallbackOnServerError() {
 
@@ -212,22 +207,21 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при 500").isEqualTo("REVIEW_REQUIRED");
+        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при 500").isEqualTo(FraudDecision.REVIEW_REQUIRED.getValue());
         softly.assertThat(transferResponse.isRequiresManualReview()).as("Manual review").isTrue();
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     @Test
     @DisplayName("Connection error → REVIEW_REQUIRED")
     @FraudCheckMock(
             connectionError = true,
-            port = 8083
+            port = FraudTestData.PORT_CONNECTION_ERROR
     )
     public void transferFallbackOnConnectionError() {
 
@@ -236,15 +230,14 @@ public class TransferWithFraudCheckTest extends BaseTest {
         transferResponse = accountSteps1().transferWithFraudCheck(
                 account1.getId(),
                 account2.getId(),
-                TRANSFER_AMOUNT
+                FraudTestData.TRANSFER_AMOUNT
         );
 
         softly.assertThat(transferResponse).as("Ответ не должен быть null").isNotNull();
-        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при connection error").isEqualTo("REVIEW_REQUIRED");
+        softly.assertThat(transferResponse.getStatus()).as("Fallback в REVIEW_REQUIRED при connection error").isEqualTo(FraudDecision.REVIEW_REQUIRED.getValue());
         softly.assertThat(transferResponse.isRequiresManualReview()).as("Manual review").isTrue();
-        softly.assertThat(accountSteps1().getTransactions(account1.getId()))
-                .as("У отправителя не должно быть TRANSFER_OUT")
-                .noneMatch(t -> t.getType().equals("TRANSFER_OUT"));
+        softly.assertThat(accountSteps1().getTransactions(account1.getId())).as("У отправителя не должно быть TRANSFER_OUT")
+                .noneMatch(t -> t.getType().equals(TransactionType.TRANSFER_OUT.getValue()));
     }
 
     private void prepareUsersAndAccounts() {
