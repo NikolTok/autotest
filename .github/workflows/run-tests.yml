@@ -35,6 +35,7 @@ jobs:
         env:
           APIBASEURL: http://localhost:4111
           UIBASEURL: http://frontend
+          APIVERSION: /api/v1
 
       - name: Run Swagger coverage
         if: always()
