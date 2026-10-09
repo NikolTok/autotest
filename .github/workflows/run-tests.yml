@@ -1,10 +1,14 @@
 name: Run tests
 
-on: [ push, workflow_dispatch ]
+on:
+  push:
+    branches:
+      - run-tests-pipeline
+  workflow_dispatch:
 
 jobs:
   run-tests:
-    name: Set up services (review apps) and run tests
+    name: Set up services and run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -20,15 +24,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{runner.os}}-maven-${{hashFiles('**/pom.xml')}}
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{runner.os}}-maven-
+            ${{ runner.os }}-maven-
 
       - name: Make mvnw executable
         run: chmod +x mvnw
 
       - name: Set up services
-        run: cd infra/docker_compose && bash restart_docker.sh %% cd ../..
+        run: |
+          cd infra/docker_compose || cd docker_compose
+          bash restart_docker.sh
+          cd ../..
 
       - name: Run tests
         run: ./mvnw clean test -q
@@ -37,29 +44,72 @@ jobs:
           UIBASEURL: http://frontend
           APIVERSION: /api/v1
 
+      - name: Download swagger-coverage CLI
+        if: always()
+        run: |
+          if [ ! -d ".swagger-coverage-commandline" ]; then
+            wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip
+            unzip -q swagger-coverage-1.5.0.zip
+            mv swagger-coverage-commandline-1.5.0 .swagger-coverage-commandline
+          fi
+
       - name: Run Swagger coverage
         if: always()
-        run: .swagger-coverage-commandline/bin/swagger-coverage-commandline -s http://localhost:4111/v3/api-docs -i target/swagger-coverage-output
+        run: |
+          .swagger-coverage-commandline/bin/swagger-coverage-commandline \
+            -s http://localhost:4111/v3/api-docs \
+            -i target/swagger-coverage-output
 
+      # Скачиваем историю gh-pages, чтобы сохранить тренды Allure
       - name: Load test report history
         uses: actions/checkout@v2
         if: always()
+        continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
 
-      - name: Build test report
-        uses: simple-elf/allure-report-action@v1.7
+      # Генерируем Allure-отчёт и раскладываем в allure-history/<N>/allure-report/
+      - name: Build Allure report
+        uses: simple-elf/allure-report-action@v1.13
         if: always()
         with:
           gh_pages: gh-pages
           allure_results: target/allure-results
           allure_history: allure-history
+          allure_report: allure-report
+          keep_reports: 20
 
+      # Кладём swagger-coverage в allure-history/<N>/swagger-coverage/
       - name: Build Swagger coverage report
         if: always()
-        run: sudo cp swagger-coverage-report.html allure-history/${{ github.run_number }}
+        run: |
+          mkdir -p allure-history/${{ github.run_number }}/swagger-coverage
+          if [ -f swagger-coverage-report.html ]; then
+            sudo cp swagger-coverage-report.html \
+              allure-history/${{ github.run_number }}/swagger-coverage/index.html
+          fi
+          if [ -f swagger-coverage-results.json ]; then
+            sudo cp swagger-coverage-results.json \
+              allure-history/${{ github.run_number }}/swagger-coverage/
+          fi
 
+      # Опционально: index.html-редирект на последний отчёт
+      - name: Create latest report redirect
+        if: always()
+        run: |
+          mkdir -p allure-history
+          cat > allure-history/index.html <<EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=${{ github.run_number }}/allure-report/">
+          </head>
+          <body>Redirecting to latest report...</body>
+          </html>
+          EOF
+
+      # Публикуем всё содержимое allure-history/ в ветку gh-pages
       - name: Publish test report
         uses: peaceiris/actions-gh-pages@v3
         if: always()
@@ -67,7 +117,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+          keep_files: true    # ← важно: не затирать старые прогоны
 
       - name: Clean up services
         if: always()
-        run: cd infra/docker_compose && docker compose down
+        run: |
+          cd infra/docker_compose || cd docker_compose
+          docker compose down
