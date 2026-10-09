@@ -10,6 +10,7 @@ jobs:
   run-tests:
     name: Set up services and run tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,9 +59,8 @@ jobs:
         run: |
           .swagger-coverage-commandline/bin/swagger-coverage-commandline \
             -s http://localhost:4111/v3/api-docs \
-            -i target/swagger-coverage-output
+            -i target/swagger-coverage-output || true
 
-      # Скачиваем историю gh-pages, чтобы сохранить тренды Allure
       - name: Load test report history
         uses: actions/checkout@v2
         if: always()
@@ -69,18 +69,39 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      # Генерируем Allure-отчёт и раскладываем в allure-history/<N>/allure-report/
-      - name: Build Allure report
-        uses: simple-elf/allure-report-action@v1.13
+      - name: Install Allure CLI
         if: always()
-        with:
-          gh_pages: gh-pages
-          allure_results: target/allure-results
-          allure_history: allure-history
-          allure_report: allure-report
-          keep_reports: 20
+        run: |
+          wget -q https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.tgz
+          tar -xzf allure-2.29.0.tgz
+          sudo mv allure-2.29.0 /opt/allure
+          sudo ln -sf /opt/allure/bin/allure /usr/local/bin/allure
+          allure --version
 
-      # Кладём swagger-coverage в allure-history/<N>/swagger-coverage/
+      - name: Prepare allure history directory
+        if: always()
+        run: |
+          mkdir -p allure-history
+          if [ -d gh-pages/history ]; then
+            cp -r gh-pages/history allure-history/history
+          fi
+
+      - name: Generate Allure report
+        if: always()
+        run: |
+          if [ ! -d target/allure-results ] || [ -z "$(ls -A target/allure-results 2>/dev/null)" ]; then
+            echo "WARNING: target/allure-results is empty or missing"
+          fi
+          mkdir -p allure-history/${{ github.run_number }}/allure-report
+          allure generate target/allure-results \
+            -o allure-history/${{ github.run_number }}/allure-report \
+            --clean || true
+
+          if [ -d allure-history/${{ github.run_number }}/allure-report/history ]; then
+            rm -rf allure-history/history
+            cp -r allure-history/${{ github.run_number }}/allure-report/history allure-history/history
+          fi
+
       - name: Build Swagger coverage report
         if: always()
         run: |
@@ -94,11 +115,9 @@ jobs:
               allure-history/${{ github.run_number }}/swagger-coverage/
           fi
 
-      # Опционально: index.html-редирект на последний отчёт
-      - name: Create latest report redirect
+      - name: Create latest redirect
         if: always()
         run: |
-          mkdir -p allure-history
           cat > allure-history/index.html <<EOF
           <!DOCTYPE html>
           <html>
@@ -109,7 +128,6 @@ jobs:
           </html>
           EOF
 
-      # Публикуем всё содержимое allure-history/ в ветку gh-pages
       - name: Publish test report
         uses: peaceiris/actions-gh-pages@v3
         if: always()
@@ -117,7 +135,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
-          keep_files: true    # ← важно: не затирать старые прогоны
+          keep_files: true
 
       - name: Clean up services
         if: always()
